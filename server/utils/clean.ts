@@ -20,3 +20,8 @@ export function hasThreeKeyParts(apiKey: string): boolean {
   const parts = apiKey.split(':')
   return parts.length === 3 && parts.every((part) => part.length > 0)
 }
+
+/** True for "true" however it was typed: True, TRUE, " true ", "true" in quotes. */
+export function isSwitchOn(value: unknown): boolean {
+  return cleanCredential(value).toLowerCase() === 'true'
+}

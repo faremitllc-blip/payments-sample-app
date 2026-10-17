@@ -1,6 +1,6 @@
 import { uuidFromSeed } from './circle'
 import { bridgeIsLive } from './bankRules'
-import { cleanCredential } from './clean'
+import { cleanCredential, isSwitchOn } from './clean'
 
 /**
  * Server-side client for Bridge (bridge.xyz): identity checks and virtual bank
@@ -22,7 +22,7 @@ function bridgeSettings() {
   // Safety guard, like the Circle one: live Bridge keys move real money, so
   // they work only when ALLOW_LIVE_BANKING=true is set on purpose.
   const live = bridgeIsLive(apiKey)
-  if (live && config.allowLiveBanking !== 'true') {
+  if (live && !isSwitchOn(config.allowLiveBanking)) {
     throw createError({
       statusCode: 503,
       statusMessage: 'Only Bridge sandbox keys are allowed. Live keys are disabled',

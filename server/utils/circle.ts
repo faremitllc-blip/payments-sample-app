@@ -1,5 +1,5 @@
 import { constants, createHash, publicEncrypt, randomUUID } from 'node:crypto'
-import { cleanCredential, hasThreeKeyParts } from './clean'
+import { cleanCredential, hasThreeKeyParts, isSwitchOn } from './clean'
 import {
   getSetting,
   getWalletRow,
@@ -71,7 +71,7 @@ function circleSettings() {
   // Safety guard: only Circle test keys are accepted unless live mode is
   // switched on deliberately with ALLOW_LIVE_FUNDS=true.
   const live = !apiKey.startsWith('TEST_API_KEY:')
-  if (live && config.allowLiveFunds !== 'true') {
+  if (live && !isSwitchOn(config.allowLiveFunds)) {
     throw createError({
       statusCode: 500,
       statusMessage:

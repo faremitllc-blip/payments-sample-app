@@ -3,11 +3,15 @@ import type { H3Event } from 'h3'
 export interface AuthedUser {
   id: string
   email: string
+  /** True once the user has clicked the link in the confirmation email. */
+  emailConfirmed: boolean
 }
 
 interface SupabaseUserResponse {
   id?: string
   email?: string
+  email_confirmed_at?: string | null
+  confirmed_at?: string | null
 }
 
 /**
@@ -49,7 +53,11 @@ export async function requireUser(event: H3Event): Promise<AuthedUser> {
     })
   }
 
-  return { id: user.id, email: user.email || '' }
+  return {
+    id: user.id,
+    email: user.email || '',
+    emailConfirmed: Boolean(user.email_confirmed_at || user.confirmed_at),
+  }
 }
 
 const rateBuckets = new Map<string, number[]>()

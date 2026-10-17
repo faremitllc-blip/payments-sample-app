@@ -48,17 +48,47 @@ export default defineEventHandler(async (event) => {
   const endorsements = parseEndorsements(
     useRuntimeConfig().bridgeEndorsements,
   )
-  const link = await bridgeRequest<KycLink>('/kyc_links', {
-    method: 'POST',
-    idempotencyKey: bridgeLinkSeed(user.id),
-    body: {
-      full_name: fullName,
-      email: user.email,
-      type: body.type,
-      redirect_uri: `${getRequestURL(event).origin}/bank`,
-      ...(endorsements.length > 0 ? { endorsements } : {}),
-    },
-  })
+  let link: KycLink
+  let adoptedType = ''
+  try {
+    link = await bridgeRequest<KycLink>('/kyc_links', {
+      method: 'POST',
+      idempotencyKey: bridgeLinkSeed(user.id),
+      body: {
+        full_name: fullName,
+        email: user.email,
+        type: body.type,
+        redirect_uri: `${getRequestURL(event).origin}/bank`,
+        ...(endorsements.length > 0 ? { endorsements } : {}),
+      },
+    })
+  } catch (err: any) {
+    // Bridge keeps one verification per email. If this email already has one
+    // (for example from an earlier attempt), carry on with that one. Only do
+    // this for an email the user has confirmed, so nobody can attach to
+    // someone else's verification by signing up with their address.
+    if (!/already been created/i.test(String(err?.statusMessage || ''))) {
+      throw err
+    }
+    if (!user.emailConfirmed) {
+      throw createError({
+        statusCode: 400,
+        statusMessage:
+          'Confirm your email address first (check your inbox), then try again',
+      })
+    }
+    const found = await bridgeRequest<{ data?: Array<KycLink & { email?: string; type?: string }> }>(
+      `/kyc_links?email=${encodeURIComponent(user.email)}&limit=10`,
+    )
+    const match = (found.data || []).find(
+      (item) => String(item.email || '').toLowerCase() === user.email.toLowerCase(),
+    )
+    if (!match) {
+      throw err
+    }
+    link = match
+    adoptedType = isCustomerType(match.type) ? match.type : ''
+  }
   if (!link.id) {
     throw createError({
       statusCode: 502,
@@ -70,7 +100,7 @@ export default defineEventHandler(async (event) => {
     user_id: user.id,
     kyc_link_id: link.id,
     customer_id: link.customer_id || null,
-    customer_type: body.type,
+    customer_type: adoptedType || body.type,
   })
   return { status: await refreshBankStatus(row) }
 })
