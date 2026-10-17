@@ -95,6 +95,23 @@
         />
       </section>
 
+      <section v-if="bankConfigured" class="mo-card mo-g-bankcard">
+        <div class="mo-card-head">
+          <h2>Bank accounts</h2>
+          <NuxtLink to="/bank">Manage</NuxtLink>
+        </div>
+        <p class="mo-muted">
+          Get paid by bank transfer. What arrives is turned into USDC in this
+          wallet.
+        </p>
+        <ul class="mo-pills" aria-label="Your bank accounts">
+          <li v-for="item in bankSummary" :key="item.code" :class="{ 'is-open': item.open }">
+            <strong>{{ item.code }}</strong>
+            <span>{{ item.open ? 'Open' : 'Not opened' }}</span>
+          </li>
+        </ul>
+      </section>
+
       <section class="mo-card mo-g-month">
         <div class="mo-card-head">
           <h2>This month</h2>
@@ -173,6 +190,15 @@ const {
   createWallet,
 } = useWallet()
 const { copied, copy } = useCopy()
+const { configured: bankConfigured, accounts: bankAccounts, load: loadBank } =
+  useBank()
+
+const bankSummary = computed(() =>
+  (['usd', 'eur', 'gbp'] as const).map((currency) => ({
+    code: currency.toUpperCase(),
+    open: bankAccounts.value.some((a) => a.currency === currency),
+  })),
+)
 
 const loading = ref(true)
 const creating = ref(false)
@@ -212,6 +238,8 @@ async function loadAll() {
   now.value = new Date()
   await loadWallet()
   await Promise.all([loadBalance(), loadActivity()])
+  // The bank summary is a bonus. If it cannot load, the home screen still works.
+  loadBank().catch(() => {})
 }
 
 async function create() {

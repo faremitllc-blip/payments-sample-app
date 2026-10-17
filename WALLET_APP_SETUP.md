@@ -149,3 +149,15 @@ the wallet exists, press **Connect my wallet** on the Bank page and Bridge is
 told to deliver to the real address. With a live Bridge key this shortcut is
 off: a real wallet is always required. Run the latest
 `supabase/add-bank-accounts.sql` once so the database has the new column.
+
+**Switching bank accounts from sandbox to live**
+1. Run `supabase/go-live-banking-reset.sql` once. It removes the saved sandbox
+   identity checks and accounts. Never run it again once real customers have
+   accounts.
+2. In Vercel (Production only): set `BRIDGE_API_KEY` to the live key, and set
+   `ALLOW_LIVE_BANKING` to `true`. If Bridge has enabled them for you, also set
+   `BRIDGE_ENDORSEMENTS` to `sepa,faster_payments`.
+3. Redeploy with "Use existing Build Cache" unticked.
+4. Each user passes a real identity check, then opens an account. The wallet
+   must be on a real network (Polygon, for example), never a test network.
+To go back, set `ALLOW_LIVE_BANKING` to empty and use the sandbox key again.

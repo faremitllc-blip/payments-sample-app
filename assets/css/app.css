@@ -272,6 +272,38 @@
   grid-column: span 3;
 }
 
+.fm-tile-bank {
+  grid-column: span 6;
+  min-height: 0;
+  flex-direction: row;
+  align-items: flex-start;
+  background: #ffffff;
+  border-color: var(--fm-kelp);
+}
+
+.fm-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fm-chips li {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--fm-tide);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.fm-tile .fm-tile-fine {
+  margin-top: 12px;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .fm-tile {
     transition: none;
@@ -514,7 +546,8 @@
     padding: 18px;
   }
 
-  .fm-tile-send {
+  .fm-tile-send,
+  .fm-tile-bank {
     grid-column: span 2;
   }
 
@@ -745,6 +778,7 @@
 }
 
 .mo-g-month,
+.mo-g-bankcard,
 .mo-g-tx {
   grid-column: 1 / -1;
   min-width: 0;
@@ -1140,4 +1174,30 @@
   margin: 2px 0 0;
   font-weight: 600;
   overflow-wrap: anywhere;
+}
+
+/* Bank summary on the dashboard home */
+.mo-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mo-pills li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--fm-line);
+  border-radius: 999px;
+  color: var(--fm-muted);
+}
+
+.mo-pills li.is-open {
+  border-color: var(--fm-kelp);
+  background: var(--fm-tide);
+  color: var(--fm-ink);
 }

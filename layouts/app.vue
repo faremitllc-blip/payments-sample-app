@@ -10,6 +10,7 @@
         <nav class="fm-nav" aria-label="Main">
           <template v-if="session">
             <v-btn variant="text" to="/wallet" color="secondary">Wallet</v-btn>
+            <v-btn variant="text" to="/bank" color="secondary">Bank</v-btn>
             <v-btn variant="text" to="/send" color="secondary">Send</v-btn>
             <v-btn variant="text" to="/receive" color="secondary">Receive</v-btn>
             <v-btn variant="text" to="/activity" color="secondary">

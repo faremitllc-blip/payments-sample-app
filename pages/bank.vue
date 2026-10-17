@@ -43,6 +43,16 @@
       >
         Test mode: no real bank details or money are involved.
       </v-alert>
+      <v-alert
+        v-else
+        type="warning"
+        variant="tonal"
+        class="my-4"
+      >
+        These are real bank details. Money paid in is converted to USDC and sent
+        to your wallet, and that cannot be undone. Only pay in from accounts in
+        your own name unless the details say otherwise.
+      </v-alert>
 
       <v-alert
         v-if="!live && !wallet"
