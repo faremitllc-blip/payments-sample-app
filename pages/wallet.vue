@@ -146,10 +146,12 @@
               <span class="mo-wallet-mark" aria-hidden="true">M</span>
               <span class="mo-wallet-net">{{ networkName(wallet.blockchain) }}</span>
             </div>
-            <p class="mo-wallet-label">USDC balance</p>
-            <p class="mo-wallet-balance">{{ formatUsdc(usdc) }}</p>
+            <div class="mo-wallet-main">
+              <p class="mo-wallet-label">USDC balance</p>
+              <p class="mo-wallet-balance">{{ formatUsdc(usdc) }}</p>
+            </div>
             <div class="mo-wallet-bottom">
-              <div>
+              <div class="mo-wallet-who">
                 <p class="mo-wallet-label">Name</p>
                 <p class="mo-wallet-value">{{ displayName }}</p>
               </div>
@@ -169,8 +171,8 @@
           </div>
 
           <div class="mo-wallet-actions">
-            <v-btn to="/send" color="primary" variant="flat" block>Send</v-btn>
-            <v-btn to="/receive" color="secondary" variant="outlined" block>
+            <v-btn to="/send" color="primary" variant="flat">Send</v-btn>
+            <v-btn to="/receive" color="secondary" variant="outlined">
               Receive
             </v-btn>
           </div>

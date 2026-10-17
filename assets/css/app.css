@@ -1029,17 +1029,22 @@
   margin-top: 14px;
 }
 
-/* Wallet card */
+/* Wallet card: a real bank-card shape (ISO ratio, 85.6 x 54 mm) */
 .mo-wallet {
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 210px;
-  padding: 20px;
-  border-radius: 18px;
+  width: 100%;
+  max-width: 400px;
+  aspect-ratio: 1.586;
+  margin: 0 auto;
+  padding: 5% 6%;
+  overflow: hidden;
+  border-radius: 16px;
   background:
-    radial-gradient(160px 120px at 90% 10%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 70%),
+    radial-gradient(180px 130px at 92% 6%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 70%),
     linear-gradient(135deg, #a8e4ee 0%, #8aa4f2 45%, #b99be8 100%);
+  box-shadow: 0 10px 24px rgba(37, 84, 232, 0.18);
   color: var(--fm-ink);
 }
 
@@ -1053,31 +1058,35 @@
 .mo-wallet-mark {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
   background: rgba(255, 255, 255, 0.7);
   font-family: 'Outfit', sans-serif;
   font-weight: 800;
 }
 
 .mo-wallet-net {
-  padding: 4px 10px;
+  padding: 3px 10px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.6);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 700;
 }
 
 .mo-wallet-label {
-  margin-top: 16px;
-  font-size: 0.75rem;
-  opacity: 0.8;
+  margin: 0;
+  font-size: 0.7rem;
+  opacity: 0.75;
+}
+
+.mo-wallet-main {
+  margin-top: auto;
 }
 
 .mo-wallet-balance {
   font-family: 'Outfit', sans-serif;
-  font-size: 2.2rem;
+  font-size: clamp(1.8rem, 7vw, 2.3rem);
   font-weight: 600;
   letter-spacing: -0.03em;
   line-height: 1.1;
@@ -1087,17 +1096,21 @@
 .mo-wallet-bottom {
   display: flex;
   align-items: flex-end;
-  gap: 18px;
-  margin-top: auto;
-}
-
-.mo-wallet-bottom .mo-wallet-label {
-  margin-top: 14px;
+  gap: 16px;
+  margin-top: 12px;
 }
 
 .mo-wallet-value {
-  font-size: 0.92rem;
+  overflow: hidden;
+  font-size: 0.86rem;
   font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mo-wallet-who {
+  min-width: 0;
+  max-width: 45%;
 }
 
 .mo-wallet-addr {
@@ -1109,10 +1122,10 @@
   display: grid;
   flex: none;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border: 0;
-  border-radius: 12px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.7);
   color: var(--fm-ink);
   cursor: pointer;
@@ -1124,9 +1137,19 @@
 
 .mo-wallet-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
-  margin-top: 16px;
+  max-width: 400px;
+  margin: 16px auto 0;
+}
+
+.mo-wallet-actions .v-btn {
+  min-width: 0;
+  width: 100%;
+}
+
+.mo-dash-side > .mo-card {
+  min-width: 0;
 }
 
 /* Bank accounts panel */
