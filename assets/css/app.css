@@ -1201,3 +1201,19 @@
   background: var(--fm-tide);
   color: var(--fm-ink);
 }
+
+/* Embedded identity check */
+.mo-frame {
+  display: block;
+  width: 100%;
+  height: 720px;
+  border: 1px solid var(--fm-line);
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+@media (max-width: 860px) {
+  .mo-frame {
+    height: 80vh;
+  }
+}

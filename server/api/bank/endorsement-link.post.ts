@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const { status } = await requireApprovedCustomer(user.id)
-  const redirect = encodeURIComponent(`${getRequestURL(event).origin}/bank`)
+  const redirect = encodeURIComponent(`${getRequestURL(event).origin}/verify?done=1`)
   const result = await bridgeRequest<{ url?: string }>(
     `/customers/${encodeURIComponent(status.customerId)}/kyc_link?endorsement=sepa&redirect_uri=${redirect}`,
   )

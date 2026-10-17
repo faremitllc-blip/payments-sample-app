@@ -90,7 +90,7 @@
         <h2>First, verify who you are</h2>
         <p class="mo-muted mt-2 mb-4">
           Banks require an identity check before giving you account details.
-          It is done on Bridge's secure page, so your ID is never stored by
+          It is done with our verification partner, so your ID is never stored by
           Mondo.
         </p>
         <v-form class="fm-form" @submit.prevent="start">
@@ -150,13 +150,11 @@
             </div>
             <v-btn
               v-if="status.kycStatus !== 'approved' && status.kycStatus !== 'under_review' && status.kycLink"
-              :href="status.kycLink"
-              target="_blank"
-              rel="noopener"
+              to="/verify"
               variant="outlined"
               color="secondary"
             >
-              Open verification
+              Continue verification
             </v-btn>
           </li>
         </ol>
@@ -254,13 +252,12 @@
                 variant="tonal"
                 class="mb-4"
               >
-                Bridge has not approved your verification for
-                {{ item.info.code }} accounts yet.
+                {{ item.info.code }} accounts are not enabled on your profile yet.
                 <template v-if="item.currency === 'eur'">
                   Euro accounts need a proof of address.
                 </template>
                 <template v-else>
-                  Ask Bridge to enable it for your customer record.
+                  Please contact support and we will look into it.
                 </template>
               </v-alert>
               <v-btn

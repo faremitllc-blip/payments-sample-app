@@ -11,18 +11,18 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      titleTemplate: '%s - ' + process.env.npm_package_name,
-      title: process.env.npm_package_name || '',
+      titleTemplate: '%s - Mondo',
+      title: 'Mondo',
       meta: [
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         {
           name: 'description',
-          content: process.env.npm_package_description || '',
+          content: 'Mondo: US, euro and pound bank details and a USDC wallet in one app.',
         },
       ],
       link: [
-        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+        { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
         {
           rel: 'stylesheet',
           href: 'https://cdn.jsdelivr.net/npm/@mdi/font@latest/css/materialdesignicons.min.css',

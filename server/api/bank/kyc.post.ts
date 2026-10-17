@@ -58,7 +58,7 @@ export default defineEventHandler(async (event) => {
         full_name: fullName,
         email: user.email,
         type: body.type,
-        redirect_uri: `${getRequestURL(event).origin}/bank`,
+        redirect_uri: `${getRequestURL(event).origin}/verify?done=1`,
         ...(endorsements.length > 0 ? { endorsements } : {}),
       },
     })
