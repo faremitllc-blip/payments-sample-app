@@ -32,134 +32,205 @@
       </v-btn>
     </div>
 
-    <div v-else class="mo-grid">
-      <section class="mo-g-head">
-        <div class="mo-head-text">
-          <h1 class="mo-greeting">Welcome back, {{ displayName }}!</h1>
-          <div class="fm-address-box">
-            <code>{{ wallet.address }}</code>
+    <div v-else class="mo-dash">
+      <h1 class="mo-sr">Dashboard</h1>
+      <div class="mo-dash-main">
+        <div class="mo-row-top">
+          <section class="mo-card mo-summary">
+            <div class="mo-card-head">
+              <h2>Monthly summary</h2>
+              <ul class="mo-legend" aria-label="Chart legend">
+                <li><span class="mo-dot mo-dot-in"></span>Received</li>
+                <li><span class="mo-dot mo-dot-sent"></span>Sent</li>
+              </ul>
+            </div>
+            <div
+              class="mo-bars"
+              role="img"
+              :aria-label="`Received and sent each month over the last six months. This month: received ${formatUsdc(stats.received)} USDC, sent ${formatUsdc(stats.sent)} USDC.`"
+            >
+              <div v-for="(label, i) in months.labels" :key="label + i" class="mo-bar-col">
+                <div class="mo-bar-pair">
+                  <span
+                    class="mo-bar-in"
+                    :style="{ height: barHeight(months.received[i]) }"
+                  ></span>
+                  <span
+                    class="mo-bar-sent"
+                    :style="{ height: barHeight(months.sent[i]) }"
+                  ></span>
+                </div>
+                <span class="mo-bar-label">{{ label }}</span>
+              </div>
+            </div>
+          </section>
+
+          <RingStat
+            label="Received"
+            icon="mdi-arrow-bottom-left"
+            tone="in"
+            :amount="formatUsdc(stats.received)"
+            :fill="ringFill(stats.received, bestMonth)"
+            :change="receivedChange"
+          />
+          <RingStat
+            label="Sent"
+            icon="mdi-arrow-top-right"
+            tone="out"
+            :amount="formatUsdc(stats.sent)"
+            :fill="ringFill(stats.sent, bestMonth)"
+            :change="sentChange"
+          />
+        </div>
+
+        <section class="mo-card mo-overview">
+          <div class="mo-card-head">
+            <h2>Overview</h2>
+            <div class="mo-toggle" role="group" aria-label="Chart period">
+              <button
+                type="button"
+                :class="{ 'is-on': period === 'weeks' }"
+                :aria-pressed="period === 'weeks'"
+                @click="period = 'weeks'"
+              >
+                8 weeks
+              </button>
+              <button
+                type="button"
+                :class="{ 'is-on': period === 'months' }"
+                :aria-pressed="period === 'months'"
+                @click="period = 'months'"
+              >
+                6 months
+              </button>
+            </div>
+          </div>
+          <OverviewChart
+            :labels="chart.labels"
+            :received="chart.received"
+            :sent="chart.sent"
+            :unit="period"
+          />
+        </section>
+
+        <section class="mo-card mo-tx">
+          <div class="mo-card-head">
+            <h2>Transactions</h2>
+            <NuxtLink to="/activity">See all</NuxtLink>
+          </div>
+          <TxTable :items="activity.slice(0, 6)" />
+          <p class="mo-muted mo-foot">
+            The chart and totals use your latest 50 transfers. Failed transfers
+            are not counted.
+          </p>
+        </section>
+      </div>
+
+      <aside class="mo-dash-side">
+        <section class="mo-card mo-wallet-card-wrap">
+          <div class="mo-card-head">
+            <h2>Your wallet</h2>
             <v-btn
               size="small"
-              variant="tonal"
-              :prepend-icon="copied ? 'mdi-check' : 'mdi-content-copy'"
-              @click="copy(wallet.address)"
+              variant="text"
+              color="secondary"
+              :loading="refreshing"
+              @click="refresh"
             >
-              {{ copied ? 'Copied' : 'Copy' }}
+              Refresh
             </v-btn>
           </div>
-          <p class="fm-notice">{{ networkName(wallet.blockchain) }}</p>
-        </div>
 
-        <div class="mo-actions">
-          <v-btn size="large" to="/send" color="primary" variant="flat">
-            Send
-          </v-btn>
-          <v-btn size="large" to="/receive" variant="outlined" color="secondary">
-            Receive
-          </v-btn>
-          <v-btn
-            size="large"
-            variant="text"
-            color="secondary"
-            :loading="refreshing"
-            @click="refresh"
-          >
-            Refresh
-          </v-btn>
-        </div>
-      </section>
+          <div class="mo-wallet">
+            <div class="mo-wallet-top">
+              <span class="mo-wallet-mark" aria-hidden="true">M</span>
+              <span class="mo-wallet-net">{{ networkName(wallet.blockchain) }}</span>
+            </div>
+            <p class="mo-wallet-label">USDC balance</p>
+            <p class="mo-wallet-balance">{{ formatUsdc(usdc) }}</p>
+            <div class="mo-wallet-bottom">
+              <div>
+                <p class="mo-wallet-label">Name</p>
+                <p class="mo-wallet-value">{{ displayName }}</p>
+              </div>
+              <div class="mo-wallet-addr">
+                <p class="mo-wallet-label">Address</p>
+                <p class="mo-wallet-value">{{ shortAddress(wallet.address) }}</p>
+              </div>
+              <button
+                type="button"
+                class="mo-wallet-copy"
+                :aria-label="copied ? 'Address copied' : 'Copy wallet address'"
+                @click="copy(wallet.address)"
+              >
+                <v-icon size="20">{{ copied ? 'mdi-check' : 'mdi-content-copy' }}</v-icon>
+              </button>
+            </div>
+          </div>
 
-      <section class="mo-g-cards">
-        <WalletCards
-          :balance="usdc"
-          :received="stats.received"
-          :sent="stats.sent"
-          :pending="stats.pending"
-          :count="stats.count"
-          :net="stats.net"
-        />
-      </section>
+          <div class="mo-wallet-actions">
+            <v-btn to="/send" color="primary" variant="flat" block>Send</v-btn>
+            <v-btn to="/receive" color="secondary" variant="outlined" block>
+              Receive
+            </v-btn>
+          </div>
+        </section>
 
-      <section class="mo-card mo-g-overview">
-        <div class="mo-card-head">
-          <h2>Overview</h2>
-          <ul class="mo-legend" aria-label="Chart legend">
-            <li><span class="mo-dot mo-dot-in"></span>Received</li>
-            <li><span class="mo-dot mo-dot-out"></span>Sent</li>
+        <section v-if="bankConfigured" class="mo-card">
+          <div class="mo-card-head">
+            <h2>Your bank accounts</h2>
+          </div>
+          <ul class="mo-bank-list" aria-label="Your bank accounts">
+            <li v-for="item in bankSummary" :key="item.code">
+              <span class="mo-bank-code">{{ item.code }}</span>
+              <span class="mo-bank-name">{{ item.name }}</span>
+              <span class="mo-status" :class="item.open ? 'is-complete' : 'is-none'">
+                {{ item.open ? 'Open' : 'Not opened' }}
+              </span>
+            </li>
           </ul>
-        </div>
-        <OverviewChart
-          :labels="series.labels"
-          :received="series.received"
-          :sent="series.sent"
-        />
-      </section>
+          <v-btn to="/bank" color="primary" variant="flat" block class="mt-4">
+            {{ anyBankOpen ? 'Manage bank accounts' : 'Open a bank account' }}
+          </v-btn>
+        </section>
 
-      <section v-if="bankConfigured" class="mo-card mo-g-bankcard">
-        <div class="mo-card-head">
-          <h2>Bank accounts</h2>
-          <NuxtLink to="/bank">Manage</NuxtLink>
-        </div>
-        <p class="mo-muted">
-          Get paid by bank transfer. What arrives is turned into USDC in this
-          wallet.
-        </p>
-        <ul class="mo-pills" aria-label="Your bank accounts">
-          <li v-for="item in bankSummary" :key="item.code" :class="{ 'is-open': item.open }">
-            <strong>{{ item.code }}</strong>
-            <span>{{ item.open ? 'Open' : 'Not opened' }}</span>
-          </li>
-        </ul>
-      </section>
-
-      <section class="mo-card mo-g-month">
-        <div class="mo-card-head">
-          <h2>This month</h2>
-          <span class="mo-muted">{{ monthRange }}</span>
-        </div>
-
-        <div class="mo-month-numbers">
-          <div>
-            <p class="mo-muted"><span class="mo-dot mo-dot-in"></span>Received</p>
-            <p class="mo-month-amount">{{ formatUsdc(stats.received) }} USDC</p>
+        <section class="mo-card mo-setup">
+          <div class="mo-card-head">
+            <h2>Set-up progress</h2>
+            <span class="mo-chip-soft">{{ setupDone }} of {{ setup.length }}</span>
           </div>
-          <div>
-            <p class="mo-muted"><span class="mo-dot mo-dot-out"></span>Sent</p>
-            <p class="mo-month-amount">{{ formatUsdc(stats.sent) }} USDC</p>
+          <div
+            class="mo-progress"
+            role="progressbar"
+            aria-label="Set-up progress"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            :aria-valuenow="setupPercent"
+          >
+            <span :style="{ width: setupPercent + '%' }"></span>
           </div>
-        </div>
+          <ul class="mo-checks">
+            <li v-for="step in setup" :key="step.label" :class="{ 'is-done': step.done }">
+              <v-icon size="20" aria-hidden="true">
+                {{ step.done ? 'mdi-check-circle' : 'mdi-circle-outline' }}
+              </v-icon>
+              <NuxtLink v-if="step.to && !step.done" :to="step.to">{{ step.label }}</NuxtLink>
+              <span v-else>{{ step.label }}</span>
+            </li>
+          </ul>
+        </section>
 
-        <div
-          class="mo-bar"
-          role="img"
-          :aria-label="`Received ${inPercent} percent and sent ${outPercent} percent of this month's activity`"
-        >
-          <div class="mo-bar-in" :style="{ width: inPercent + '%' }"></div>
-          <div class="mo-bar-out" :style="{ width: outPercent + '%' }"></div>
-        </div>
-        <p class="mo-muted">
-          Based on your latest 50 transfers. Failed transfers are not counted.
+        <p v-if="mode.loaded && !mode.live" class="fm-notice">
+          Need test USDC? Get some free from the
+          <a href="https://faucet.circle.com" target="_blank" rel="noopener">
+            Circle faucet</a
+          >. Choose the network shown above and paste your address.
         </p>
-      </section>
-
-      <section class="mo-card mo-g-tx">
-        <div class="mo-card-head">
-          <h2>Transactions</h2>
-          <NuxtLink to="/activity">See all</NuxtLink>
-        </div>
-        <WalletTxList :items="activity.slice(0, 6)" />
-      </section>
-
-      <p v-if="mode.loaded && !mode.live" class="fm-notice mo-g-head">
-        Need test USDC? Get some free from the
-        <a href="https://faucet.circle.com" target="_blank" rel="noopener">
-          Circle faucet</a
-        >. Choose the network shown above and paste your address.
-      </p>
-      <p v-else-if="mode.loaded" class="fm-notice mo-g-head">
-        To add money, send USDC to the address above. Use the network shown, or
-        the funds may be lost.
-      </p>
+        <p v-else-if="mode.loaded" class="fm-notice">
+          To add money, send USDC to your address. Use the network shown, or the
+          funds may be lost.
+        </p>
+      </aside>
     </div>
   </div>
 </template>
@@ -170,12 +241,19 @@ import { useCopy } from '~/composables/useCopy'
 import {
   formatUsdc,
   networkName,
+  shortAddress,
   useWallet,
 } from '~/composables/useWallet'
-import { monthTotals, weeklySeries } from '~/utils/activityStats'
+import {
+  monthTotals,
+  monthlySeries,
+  percentChange,
+  ringFill,
+  weeklySeries,
+} from '~/utils/activityStats'
 
 definePageMeta({ layout: 'dash', middleware: 'auth' })
-useHead({ title: 'Home' })
+useHead({ title: 'Dashboard' })
 
 const { session } = useAuth()
 const { mode, loadMode } = useAppMode()
@@ -190,21 +268,34 @@ const {
   createWallet,
 } = useWallet()
 const { copied, copy } = useCopy()
-const { configured: bankConfigured, accounts: bankAccounts, load: loadBank } =
-  useBank()
+const {
+  configured: bankConfigured,
+  accounts: bankAccounts,
+  status: bankStatus,
+  load: loadBank,
+} = useBank()
 
 const bankSummary = computed(() =>
-  (['usd', 'eur', 'gbp'] as const).map((currency) => ({
-    code: currency.toUpperCase(),
-    open: bankAccounts.value.some((a) => a.currency === currency),
+  (
+    [
+      { currency: 'usd', name: 'US dollar' },
+      { currency: 'eur', name: 'Euro' },
+      { currency: 'gbp', name: 'British pound' },
+    ] as const
+  ).map((entry) => ({
+    code: entry.currency.toUpperCase(),
+    name: entry.name,
+    open: bankAccounts.value.some((a) => a.currency === entry.currency),
   })),
 )
+const anyBankOpen = computed(() => bankSummary.value.some((b) => b.open))
 
 const loading = ref(true)
 const creating = ref(false)
 const refreshing = ref(false)
 const error = ref('')
 const now = ref(new Date())
+const period = ref<'weeks' | 'months'>('weeks')
 
 // "jane.doe42@mail.com" becomes "Jane"
 const displayName = computed(() => {
@@ -214,25 +305,57 @@ const displayName = computed(() => {
 })
 
 const stats = computed(() => monthTotals(activity.value, now.value))
-const series = computed(() => weeklySeries(activity.value, now.value, 8))
+const months = computed(() => monthlySeries(activity.value, now.value, 6))
+const weeks = computed(() => weeklySeries(activity.value, now.value, 8))
+const chart = computed(() => (period.value === 'weeks' ? weeks.value : months.value))
 
-const monthRange = computed(() => {
-  const year = now.value.getFullYear()
-  const month = now.value.getMonth()
-  const short = { month: 'short', day: 'numeric' } as const
-  const first = new Date(year, month, 1).toLocaleDateString(undefined, short)
-  const last = new Date(year, month + 1, 0).toLocaleDateString(undefined, short)
-  return `${first} to ${last}, ${year}`
+const bestMonth = computed(() =>
+  Math.max(0, ...months.value.received, ...months.value.sent),
+)
+
+function barHeight(value: number): string {
+  if (bestMonth.value <= 0 || value <= 0) {
+    return '4px'
+  }
+  return `${Math.max(4, Math.round((value / bestMonth.value) * 100))}%`
+}
+
+const receivedChange = computed(() => {
+  const list = months.value.received
+  return percentChange(list[list.length - 1], list[list.length - 2])
+})
+const sentChange = computed(() => {
+  const list = months.value.sent
+  return percentChange(list[list.length - 1], list[list.length - 2])
 })
 
-const inPercent = computed(() => {
-  const total = stats.value.received + stats.value.sent
-  return total > 0 ? Math.round((stats.value.received / total) * 100) : 0
+const setup = computed(() => {
+  const steps: Array<{ label: string; done: boolean; to?: string }> = [
+    { label: 'Create your wallet', done: !!wallet.value },
+  ]
+  if (bankConfigured.value) {
+    steps.push({
+      label: 'Verify your identity',
+      done: !!bankStatus.value?.approved,
+      to: '/bank',
+    })
+    steps.push({
+      label: 'Open a bank account',
+      done: anyBankOpen.value,
+      to: '/bank',
+    })
+  }
+  steps.push({
+    label: 'Add money to your wallet',
+    done: Number(usdc.value) > 0,
+    to: '/receive',
+  })
+  return steps
 })
-const outPercent = computed(() => {
-  const total = stats.value.received + stats.value.sent
-  return total > 0 ? 100 - inPercent.value : 0
-})
+const setupDone = computed(() => setup.value.filter((s) => s.done).length)
+const setupPercent = computed(() =>
+  Math.round((setupDone.value / setup.value.length) * 100),
+)
 
 async function loadAll() {
   now.value = new Date()

@@ -9,8 +9,8 @@
     >
       <defs>
         <linearGradient id="mo-in-fill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#4f5fe6" stop-opacity="0.26" />
-          <stop offset="100%" stop-color="#4f5fe6" stop-opacity="0" />
+          <stop offset="0%" stop-color="#2554e8" stop-opacity="0.2" />
+          <stop offset="100%" stop-color="#2554e8" stop-opacity="0" />
         </linearGradient>
       </defs>
 
@@ -20,15 +20,14 @@
           :x2="width - RIGHT"
           :y1="tick.y"
           :y2="tick.y"
-          stroke="#d9dcec"
-          stroke-dasharray="3 5"
+          stroke="#e6eaf3"
         />
         <text
           :x="LEFT - 10"
           :y="tick.y + 4"
           text-anchor="end"
           font-size="12"
-          fill="#5b6078"
+          fill="#6b7390"
         >
           {{ tick.label }}
         </text>
@@ -41,7 +40,7 @@
         :y="height - 8"
         text-anchor="middle"
         font-size="12"
-        fill="#5b6078"
+        fill="#6b7390"
       >
         {{ label.text }}
       </text>
@@ -49,17 +48,18 @@
       <template v-if="hasData">
         <path :d="inArea" fill="url(#mo-in-fill)" />
         <path
-          :d="inLine"
+          :d="outLine"
           fill="none"
-          stroke="#4f5fe6"
-          stroke-width="3"
+          stroke="#8f98b3"
+          stroke-width="2"
+          stroke-dasharray="5 5"
           stroke-linecap="round"
           stroke-linejoin="round"
         />
         <path
-          :d="outLine"
+          :d="inLine"
           fill="none"
-          stroke="#e07a14"
+          stroke="#2554e8"
           stroke-width="3"
           stroke-linecap="round"
           stroke-linejoin="round"
@@ -69,15 +69,7 @@
           :cy="lastIn.y"
           r="5"
           fill="#ffffff"
-          stroke="#4f5fe6"
-          stroke-width="3"
-        />
-        <circle
-          :cx="lastOut.x"
-          :cy="lastOut.y"
-          r="5"
-          fill="#ffffff"
-          stroke="#e07a14"
+          stroke="#2554e8"
           stroke-width="3"
         />
       </template>
@@ -87,9 +79,9 @@
         :y="TOP + innerHeight / 2"
         text-anchor="middle"
         font-size="14"
-        fill="#5b6078"
+        fill="#6b7390"
       >
-        No activity in the last {{ labels.length }} weeks yet
+        No activity in this period yet
       </text>
     </svg>
   </div>
@@ -107,13 +99,14 @@ const props = defineProps({
   labels: { type: Array as () => string[], required: true },
   received: { type: Array as () => number[], required: true },
   sent: { type: Array as () => number[], required: true },
+  unit: { type: String, default: 'weeks' },
 })
 
 const LEFT = 46
 const RIGHT = 24
 const TOP = 14
 const BOTTOM = 32
-const height = 300
+const height = 280
 
 // The chart is drawn at the real pixel width of its box, so the text stays a
 // readable size on a phone instead of shrinking with the picture.
@@ -178,7 +171,7 @@ const ticks = computed(() =>
 
 const xLabels = computed(() => {
   const count = props.labels.length
-  const everyOther = width.value < 480
+  const everyOther = width.value < 480 && count > 6
   return props.labels
     .map((text, index) => ({ text, index, x: xAt(index) }))
     .filter((item) => !everyOther || (count - 1 - item.index) % 2 === 0)
@@ -198,13 +191,10 @@ const inArea = computed(() => areaPath(inPoints.value, yAt(0)))
 const lastIn = computed(
   () => inPoints.value[inPoints.value.length - 1] || { x: 0, y: 0 },
 )
-const lastOut = computed(
-  () => outPoints.value[outPoints.value.length - 1] || { x: 0, y: 0 },
-)
 
 const summary = computed(() => {
   const total = (list: number[]) =>
     list.reduce((sum, v) => sum + v, 0).toFixed(2)
-  return `Weekly activity over the last ${props.labels.length} weeks. Received ${total(props.received)} USDC and sent ${total(props.sent)} USDC.`
+  return `Activity over the last ${props.labels.length} ${props.unit}. Received ${total(props.received)} USDC and sent ${total(props.sent)} USDC.`
 })
 </script>

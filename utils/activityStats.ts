@@ -115,6 +115,58 @@ export function weeklySeries(items: StatItem[], now: Date, weeks = 8) {
   return { labels, received, sent }
 }
 
+/**
+ * Money received and sent in each of the last `months` calendar months. The
+ * last bucket is the month that contains `now`. Failed transfers are ignored.
+ */
+export function monthlySeries(items: StatItem[], now: Date, months = 6) {
+  const received: number[] = new Array(months).fill(0)
+  const sent: number[] = new Array(months).fill(0)
+  const labels: string[] = []
+
+  for (let i = 0; i < months; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - (months - 1 - i), 1)
+    labels.push(d.toLocaleDateString('en-US', { month: 'short' }))
+  }
+
+  for (const item of items) {
+    const when = new Date(item.date)
+    if (Number.isNaN(when.getTime()) || statusKind(item.state) === 'failed') {
+      continue
+    }
+    const back =
+      (now.getFullYear() - when.getFullYear()) * 12 +
+      (now.getMonth() - when.getMonth())
+    if (back < 0 || back >= months) {
+      continue
+    }
+    const index = months - 1 - back
+    if (item.direction === 'sent') {
+      sent[index] += amountOf(item)
+    } else {
+      received[index] += amountOf(item)
+    }
+  }
+
+  return { labels, received, sent }
+}
+
+/** Percent change from `previous` to `current`, or null when there is nothing to compare with. */
+export function percentChange(current: number, previous: number): number | null {
+  if (!Number.isFinite(current) || !Number.isFinite(previous) || previous <= 0) {
+    return null
+  }
+  return Math.round(((current - previous) / previous) * 1000) / 10
+}
+
+/** How full a ring should be: `value` against the largest value, from 0 to 1. */
+export function ringFill(value: number, largest: number): number {
+  if (!Number.isFinite(value) || !Number.isFinite(largest) || largest <= 0 || value <= 0) {
+    return 0
+  }
+  return Math.min(1, value / largest)
+}
+
 /** Picks a tidy top value and step for a chart axis, so ticks read 0, 5, 10, 15, 20 and so on. */
 export function niceScale(maxValue: number, divisions = 4) {
   if (!Number.isFinite(maxValue) || maxValue <= 0) {

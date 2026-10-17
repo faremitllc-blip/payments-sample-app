@@ -39,13 +39,13 @@ export default defineNuxtPlugin((nuxtApp) => {
         wallet: {
           dark: false,
           colors: {
-            primary: '#4f5fe6',
-            secondary: '#14172b',
+            primary: '#2554e8',
+            secondary: '#141a33',
             accent: '#f5a04a',
             error: '#b3261e',
             success: '#0a7a4f',
             warning: '#f5a04a',
-            info: '#14172b',
+            info: '#141a33',
           },
         },
         light: {
