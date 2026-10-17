@@ -32,12 +32,8 @@
 
         <div class="mo-content">
           <header class="mo-top">
-            <span
-              v-if="mode.loaded"
-              class="mo-test-pill"
-              :class="{ 'mo-live-pill': mode.live }"
-            >
-              {{ mode.live ? 'Live mode · real money' : 'Test mode · test network' }}
+            <span v-if="mode.loaded && !mode.live" class="mo-test-pill">
+              Test mode · test network
             </span>
             <span v-else></span>
             <span v-if="session" class="mo-user">{{ session.email }}</span>
