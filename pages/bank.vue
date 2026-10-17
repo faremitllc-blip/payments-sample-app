@@ -248,9 +248,35 @@
               <p v-if="item.info.note" class="mo-muted mb-4">
                 {{ item.info.note }}
               </p>
+              <v-alert
+                v-if="item.approval === 'missing'"
+                type="warning"
+                variant="tonal"
+                class="mb-4"
+              >
+                Bridge has not approved your verification for
+                {{ item.info.code }} accounts yet.
+                <template v-if="item.currency === 'eur'">
+                  Euro accounts need a proof of address.
+                </template>
+                <template v-else>
+                  Ask Bridge to enable it for your customer record.
+                </template>
+              </v-alert>
               <v-btn
+                v-if="item.approval === 'missing' && item.currency === 'eur'"
                 color="primary"
                 variant="flat"
+                :loading="busyCurrency === 'eur'"
+                @click="euroVerification"
+              >
+                Complete euro verification
+              </v-btn>
+              <v-btn
+                v-else
+                color="primary"
+                variant="flat"
+                :disabled="item.approval === 'missing'"
                 :loading="busyCurrency === item.currency"
                 @click="open(item.currency)"
               >
@@ -285,6 +311,7 @@ import { formatDate, useWallet } from '~/composables/useWallet'
 import {
   CURRENCY_INFO,
   depositRows,
+  endorsementState,
   kycHeadline,
   type BankCurrency,
 } from '~/utils/bank'
@@ -304,6 +331,7 @@ const {
   startVerification,
   openAccount,
   connectWallet,
+  euroVerificationLink,
   simulateApproval,
   simulateDeposit,
 } = useBank()
@@ -342,8 +370,20 @@ const currencies = computed(() =>
     currency,
     info: CURRENCY_INFO[currency],
     account: accounts.value.find((a) => a.currency === currency) || null,
+    approval: endorsementState(status.value?.endorsements, currency),
   })),
 )
+
+async function euroVerification() {
+  error.value = ''
+  busyCurrency.value = 'eur'
+  try {
+    window.location.href = await euroVerificationLink()
+  } catch (err: any) {
+    error.value = errorText(err)
+    busyCurrency.value = ''
+  }
+}
 
 function rows(account: { instructions: Record<string, unknown> }) {
   return depositRows(account.instructions)

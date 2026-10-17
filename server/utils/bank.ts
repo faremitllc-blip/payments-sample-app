@@ -13,6 +13,8 @@ export interface BankStatus {
   tosLink: string
   customerId: string
   approved: boolean
+  /** What Bridge has approved for this customer, or null if it is unknown. */
+  endorsements: Array<{ name: string; status: string }> | null
 }
 
 /** Asks Bridge for the latest verification state of a saved customer. */
@@ -26,6 +28,22 @@ export async function refreshBankStatus(
   if (customerId && customerId !== row.customer_id) {
     await setBankCustomerId(row.user_id, customerId)
   }
+  let endorsements: BankStatus['endorsements'] = null
+  if (customerId) {
+    try {
+      const customer = await bridgeRequest<{
+        endorsements?: Array<{ name?: string; status?: string }>
+      }>(`/customers/${encodeURIComponent(customerId)}`)
+      if (Array.isArray(customer.endorsements)) {
+        endorsements = customer.endorsements.map((e) => ({
+          name: String(e.name || ''),
+          status: String(e.status || ''),
+        }))
+      }
+    } catch {
+      // Not essential. Without it the screen simply cannot pre-check approvals.
+    }
+  }
   const kycStatus = link.kyc_status || 'not_started'
   const tosStatus = link.tos_status || 'pending'
   return {
@@ -36,6 +54,7 @@ export async function refreshBankStatus(
     tosLink: link.tos_link || '',
     customerId,
     approved: kycStatus === 'approved' && tosStatus === 'approved' && !!customerId,
+    endorsements,
   }
 }
 

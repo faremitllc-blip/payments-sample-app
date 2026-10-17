@@ -18,7 +18,7 @@ export function isCustomerType(value: unknown): value is CustomerType {
   return value === 'individual' || value === 'business'
 }
 
-const ENDORSEMENTS = ['sepa', 'faster_payments']
+const ENDORSEMENTS = ['base', 'sepa', 'faster_payments']
 
 /**
  * Optional extra permissions to ask Bridge for during verification, taken from
@@ -26,6 +26,14 @@ const ENDORSEMENTS = ['sepa', 'faster_payments']
  * GBP accounts may need them. Unknown words are ignored, so a typo cannot break
  * sign-up.
  */
+/**
+ * USD accounts need Bridge's "base" approval, so every new identity check asks
+ * for it, plus anything listed in BRIDGE_ENDORSEMENTS.
+ */
+export function endorsementsToRequest(value: unknown): string[] {
+  return Array.from(new Set(['base', ...parseEndorsements(value)]))
+}
+
 export function parseEndorsements(value: unknown): string[] {
   if (typeof value !== 'string') {
     return []

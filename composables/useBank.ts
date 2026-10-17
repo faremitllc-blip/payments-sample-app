@@ -8,6 +8,7 @@ export interface BankStatus {
   tosLink: string
   customerId: string
   approved: boolean
+  endorsements: Array<{ name: string; status: string }> | null
 }
 
 export interface BankAccount {
@@ -84,6 +85,14 @@ export function useBank() {
     await load()
   }
 
+  async function euroVerificationLink(): Promise<string> {
+    const result = await api<{ url: string }>('/api/bank/endorsement-link', {
+      method: 'POST',
+      body: { endorsement: 'sepa' },
+    })
+    return result.url
+  }
+
   async function simulateApproval(): Promise<void> {
     const result = await api<{ status: BankStatus }>(
       '/api/bank/simulate-kyc',
@@ -119,6 +128,7 @@ export function useBank() {
     startVerification,
     openAccount,
     connectWallet,
+    euroVerificationLink,
     simulateApproval,
     simulateDeposit,
     reset,

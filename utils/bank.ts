@@ -98,6 +98,27 @@ export function depositRows(
   return rows.sort((a, b) => rank(a.key) - rank(b.key))
 }
 
+export const REQUIRED_ENDORSEMENT: Record<BankCurrency, string> = {
+  usd: 'base',
+  eur: 'sepa',
+  gbp: 'faster_payments',
+}
+
+/**
+ * Whether Bridge has approved what this currency needs. "unknown" means we could
+ * not tell, so the account is simply attempted and Bridge decides.
+ */
+export function endorsementState(
+  endorsements: Array<{ name: string; status: string }> | null | undefined,
+  currency: BankCurrency,
+): 'ok' | 'missing' | 'unknown' {
+  if (!Array.isArray(endorsements)) {
+    return 'unknown'
+  }
+  const found = endorsements.find((e) => e.name === REQUIRED_ENDORSEMENT[currency])
+  return found && found.status === 'approved' ? 'ok' : 'missing'
+}
+
 export function kycHeadline(
   kycStatus: string,
   tosStatus: string,

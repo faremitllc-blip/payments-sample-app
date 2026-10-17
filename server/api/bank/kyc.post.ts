@@ -2,8 +2,8 @@ import { rateLimit, requireUser } from '../../utils/auth'
 import { bridgeLinkSeed, bridgeRequest, type KycLink } from '../../utils/bridge'
 import {
   cleanName,
+  endorsementsToRequest,
   isCustomerType,
-  parseEndorsements,
 } from '../../utils/bankRules'
 import { refreshBankStatus } from '../../utils/bank'
 import { getBankCustomer, saveBankCustomer } from '../../utils/db'
@@ -45,7 +45,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const endorsements = parseEndorsements(
+  const endorsements = endorsementsToRequest(
     useRuntimeConfig().bridgeEndorsements,
   )
   let link: KycLink
