@@ -118,7 +118,11 @@ const hasChat = computed(() => messages.value.length > 0)
 const ready = computed(() => !(mode.value.loaded && !mode.value.agent))
 const networkLabel = computed(() => (wallet.value ? networkName(wallet.value.blockchain) : ''))
 
+const { profile } = useProfile()
 const displayName = computed(() => {
+  if (profile.value?.displayName) {
+    return profile.value.displayName.split(' ')[0]
+  }
   const local = (session.value?.email || '').split('@')[0]
   const first = local.split(/[._\-+0-9]+/)[0]
   return first ? first.charAt(0).toUpperCase() + first.slice(1) : 'there'

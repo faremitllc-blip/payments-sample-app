@@ -207,3 +207,33 @@ export async function saveBankAccount(
   }
   return existing
 }
+
+export interface ProfileRow {
+  user_id: string
+  display_name: string | null
+  avatar: string | null
+  updated_at?: string
+}
+
+export async function getProfileRow(userId: string): Promise<ProfileRow | null> {
+  const rows = await dbRequest<ProfileRow[]>(
+    `profiles?user_id=eq.${encodeURIComponent(userId)}&select=*&limit=1`,
+  )
+  return rows.length > 0 ? rows[0] : null
+}
+
+/** Saves only the fields given, leaving the others as they were. */
+export async function saveProfileRow(
+  userId: string,
+  fields: { display_name?: string | null; avatar?: string | null },
+): Promise<ProfileRow> {
+  const rows = await dbRequest<ProfileRow[]>('profiles?on_conflict=user_id', {
+    method: 'POST',
+    body: { user_id: userId, ...fields, updated_at: new Date().toISOString() },
+    prefer: 'resolution=merge-duplicates,return=representation',
+  })
+  if (rows.length === 0) {
+    throw createError({ statusCode: 500, statusMessage: 'Could not save your profile' })
+  }
+  return rows[0]
+}

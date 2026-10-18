@@ -309,7 +309,11 @@ const now = ref(new Date())
 const period = ref<'weeks' | 'months'>('weeks')
 
 // "jane.doe42@mail.com" becomes "Jane"
+const { profile } = useProfile()
 const displayName = computed(() => {
+  if (profile.value?.displayName) {
+    return profile.value.displayName.split(' ')[0]
+  }
   const local = (session.value?.email || '').split('@')[0]
   const first = local.split(/[._\-+0-9]+/)[0]
   return first ? first.charAt(0).toUpperCase() + first.slice(1) : 'there'
@@ -348,7 +352,7 @@ const setup = computed(() => {
     steps.push({
       label: 'Verify your identity',
       done: !!bankStatus.value?.approved,
-      to: '/bank',
+      to: '/kyc',
     })
     steps.push({
       label: 'Open a bank account',

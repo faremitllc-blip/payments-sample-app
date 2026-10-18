@@ -183,3 +183,9 @@ How it stays safe:
   switch, rate limits).
 - The Gemini key never reaches the browser.
 - The design reference for the mobile apps is `design/agent-reference.png`.
+
+## Profile page and photos
+
+Run `supabase/add-profiles.sql` once in the Supabase SQL Editor (New query,
+paste, Run). It adds one small table for display names and photos. Photos are
+cropped to a 256 x 256 JPEG in the browser and saved with the profile.
