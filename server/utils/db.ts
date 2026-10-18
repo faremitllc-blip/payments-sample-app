@@ -69,6 +69,17 @@ async function dbRequest<T>(
     })
   } catch (err: any) {
     console.error('Database request failed', path, err?.statusCode, err?.data)
+    // A missing table means a setup SQL file has not been run yet. Say so,
+    // instead of a vague failure, so the fix is obvious.
+    const code = String(err?.data?.code || '')
+    if (code === 'PGRST205' || code === '42P01') {
+      const table = path.split('?')[0]
+      throw createError({
+        statusCode: 503,
+        statusMessage: `The "${table}" table is missing. Run the latest SQL file from the supabase folder in the Supabase SQL Editor`,
+        data: { missingTable: table },
+      })
+    }
     throw createError({
       statusCode: 502,
       statusMessage: 'The database request failed',
@@ -216,10 +227,18 @@ export interface ProfileRow {
 }
 
 export async function getProfileRow(userId: string): Promise<ProfileRow | null> {
-  const rows = await dbRequest<ProfileRow[]>(
-    `profiles?user_id=eq.${encodeURIComponent(userId)}&select=*&limit=1`,
-  )
-  return rows.length > 0 ? rows[0] : null
+  try {
+    const rows = await dbRequest<ProfileRow[]>(
+      `profiles?user_id=eq.${encodeURIComponent(userId)}&select=*&limit=1`,
+    )
+    return rows.length > 0 ? rows[0] : null
+  } catch (err: any) {
+    // Until add-profiles.sql has been run, the app still works without a profile.
+    if (err?.data?.missingTable === 'profiles') {
+      return null
+    }
+    throw err
+  }
 }
 
 /** Saves only the fields given, leaving the others as they were. */
