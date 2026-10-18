@@ -1,8 +1,7 @@
 # Mondo setup
 
 Mondo is a consumer wallet app: sign up, create a wallet, send and
-receive USDC, and see activity. The original Circle developer tools are still
-here under `/developers` and `/debug`.
+receive USDC, and see activity.
 
 It runs in **test mode only**. It accepts Circle test API keys, and test USDC
 has no value.

@@ -38,9 +38,6 @@
           {{ appName }} runs in test mode on a test network. No real money is
           moved, and test USDC has no value.
         </p>
-        <p>
-          <NuxtLink to="/developers">Developer tools</NuxtLink>
-        </p>
       </footer>
     </v-main>
   </v-app>
