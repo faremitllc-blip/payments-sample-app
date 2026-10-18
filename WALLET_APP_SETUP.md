@@ -161,3 +161,25 @@ off: a real wallet is always required. Run the latest
 4. Each user passes a real identity check, then opens an account. The wallet
    must be on a real network (Polygon, for example), never a test network.
 To go back, set `ALLOW_LIVE_BANKING` to empty and use the sandbox key again.
+
+## The Mondo assistant (Gemini)
+
+The assistant lives at `/assistant` and on the dashboard ("Ask Mondo AI").
+
+1. Create an API key at aistudio.google.com.
+2. In Vercel, under Settings, Environment Variables, add `ANTHROPIC_API_KEY`
+   (Production). Optionally add `ANTHROPIC_MODEL` to pick a model; leave it
+   empty for the default.
+3. Redeploy with the build cache unticked.
+
+How it stays safe:
+
+- It can read your balance, activity and bank status on its own.
+- Sending USDC, creating a wallet, starting the identity check and opening a
+  bank account are only *proposed*. An approval card shows the exact details,
+  and nothing runs until you tap Approve.
+- The server never runs an action. The app runs it through the normal API, so
+  every existing limit still applies (sign-in, per-transfer cap, live-funds
+  switch, rate limits).
+- The Gemini key never reaches the browser.
+- The design reference for the mobile apps is `design/agent-reference.png`.

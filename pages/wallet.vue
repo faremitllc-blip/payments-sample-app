@@ -35,6 +35,15 @@
     <div v-else class="mo-dash">
       <h1 class="mo-sr">Dashboard</h1>
       <div class="mo-dash-main">
+        <NuxtLink v-if="mode.loaded && mode.agent" to="/assistant" class="mo-insight">
+          <AgentOrb size="xs" />
+          <span class="mo-insight-text">
+            <strong>Ask Mondo AI</strong>
+            <span>Check your balance, sum up the month or send money, just by chatting.</span>
+          </span>
+          <v-icon size="22" aria-hidden="true">mdi-chevron-right</v-icon>
+        </NuxtLink>
+
         <div class="mo-row-top">
           <section class="mo-card mo-summary">
             <div class="mo-card-head">

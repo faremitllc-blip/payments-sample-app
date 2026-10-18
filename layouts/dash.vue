@@ -75,6 +75,7 @@ useHead({
 const { session, load, signOut } = useAuth()
 const { reset } = useWallet()
 const { reset: resetBank } = useBank()
+const { reset: resetAgent } = useAgent()
 const { mode, loadMode } = useAppMode()
 const route = useRoute()
 load()
@@ -82,6 +83,7 @@ loadMode()
 
 const mainItems = [
   { to: '/wallet', label: 'Home', icon: 'mdi-home-variant-outline' },
+  { to: '/assistant', label: 'Assistant', icon: 'mdi-shimmer' },
   { to: '/send', label: 'Send', icon: 'mdi-arrow-top-right' },
   { to: '/receive', label: 'Receive', icon: 'mdi-arrow-bottom-left' },
   { to: '/bank', label: 'Bank', icon: 'mdi-bank-outline' },
@@ -95,6 +97,7 @@ const accountItems = [
 
 const titles: Record<string, string> = {
   '/wallet': 'Dashboard',
+  '/assistant': 'Assistant',
   '/send': 'Send',
   '/receive': 'Receive',
   '/bank': 'Bank accounts',
@@ -113,6 +116,7 @@ async function logOut() {
   await signOut()
   reset()
   resetBank()
+  resetAgent()
   await navigateTo('/')
 }
 </script>

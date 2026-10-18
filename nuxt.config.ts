@@ -88,6 +88,10 @@ export default defineNuxtConfig({
     allowLiveBanking: process.env.ALLOW_LIVE_BANKING || '',
     bridgeEndorsements: process.env.BRIDGE_ENDORSEMENTS || '',
 
+    // Gemini (the in-app assistant). Server only.
+    geminiApiKey: process.env.GEMINI_API_KEY || '',
+    geminiModel: process.env.GEMINI_MODEL || '',
+
     // Supabase service role key (server only)
     supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
 

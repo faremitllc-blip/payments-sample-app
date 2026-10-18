@@ -15,5 +15,6 @@ export default defineEventHandler(() => {
     blockchain: String(config.circleBlockchain || 'MATIC-AMOY'),
     bankConfigured: bank.configured,
     bankLive: bank.live,
+    agentConfigured: cleanCredential(config.geminiApiKey).length > 0,
   }
 })

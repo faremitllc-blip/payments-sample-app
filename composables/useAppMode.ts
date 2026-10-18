@@ -5,9 +5,9 @@
  * about the mode rather than guess.
  */
 export function useAppMode() {
-  const mode = useState<{ loaded: boolean; live: boolean }>(
+  const mode = useState<{ loaded: boolean; live: boolean; agent: boolean }>(
     'fm-app-mode',
-    () => ({ loaded: false, live: false }),
+    () => ({ loaded: false, live: false, agent: false }),
   )
 
   async function loadMode(): Promise<void> {
@@ -16,7 +16,11 @@ export function useAppMode() {
     }
     try {
       const result = await $fetch<any>('/api/mode')
-      mode.value = { loaded: true, live: Boolean(result && result.live) }
+      mode.value = {
+        loaded: true,
+        live: Boolean(result && result.live),
+        agent: Boolean(result && result.agentConfigured),
+      }
     } catch {
       // Leave it unknown. The screens simply show no mode label.
     }
