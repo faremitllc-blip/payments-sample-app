@@ -31,8 +31,8 @@ const TMASK = TW - 1
 const CMASK = CW - 1
 const TILT = (18 * Math.PI) / 180
 const SPIN_SPEED = (2 * Math.PI) / 80000 // one turn every 80 seconds
-const CRYPTO = [56, 214, 255]
-const FIAT = [255, 104, 70]
+const CRYPTO_COLOR = [56, 214, 255]
+const FIAT_COLOR = [255, 104, 70]
 
 type NodeKind = 'crypto' | 'fiat'
 interface GlobeNode {
@@ -42,7 +42,7 @@ interface GlobeNode {
   kind: NodeKind
 }
 
-const NODES: GlobeNode[] = [
+const GLOBE_NODES: GlobeNode[] = [
   { name: 'New York', lat: 40.7, lon: -74.0, kind: 'fiat' },
   { name: 'London', lat: 51.5, lon: -0.1, kind: 'fiat' },
   { name: 'Frankfurt', lat: 50.1, lon: 8.7, kind: 'fiat' },
@@ -64,7 +64,7 @@ const NODES: GlobeNode[] = [
   { name: 'Hong Kong', lat: 22.3, lon: 114.2, kind: 'crypto' },
 ]
 
-const ROUTES: Array<[string, string]> = [
+const GLOBE_ROUTES: Array<[string, string]> = [
   ['New York', 'London'],
   ['New York', 'Miami'],
   ['London', 'Zug'],
@@ -399,7 +399,7 @@ onMounted(() => {
   let stars: Array<{ x: number; y: number; r: number; a: number; p: number }> = []
 
   const nodeByName = new Map<string, GlobeNode>()
-  for (const n of NODES) {
+  for (const n of GLOBE_NODES) {
     nodeByName.set(n.name, n)
   }
 
@@ -410,10 +410,10 @@ onMounted(() => {
   }
 
   const STEPS = 44
-  const nodeVec = NODES.map((n) => unit(n.lat, n.lon))
-  const routes = ROUTES.map(([from, to], i) => {
-    const a = nodeVec[NODES.indexOf(nodeByName.get(from)!)]
-    const b = nodeVec[NODES.indexOf(nodeByName.get(to)!)]
+  const nodeVec = GLOBE_NODES.map((n) => unit(n.lat, n.lon))
+  const routes = GLOBE_ROUTES.map(([from, to], i) => {
+    const a = nodeVec[GLOBE_NODES.indexOf(nodeByName.get(from)!)]
+    const b = nodeVec[GLOBE_NODES.indexOf(nodeByName.get(to)!)]
     const cosw = Math.min(1, Math.max(-1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2]))
     const w = Math.acos(cosw)
     const sinw = Math.sin(w) || 1
@@ -427,8 +427,8 @@ onMounted(() => {
       cb.push(Math.sin(t * w) / sinw)
       alt.push(peak * Math.sin(Math.PI * t))
     }
-    const c1 = nodeByName.get(from)!.kind === 'crypto' ? CRYPTO : FIAT
-    const c2 = nodeByName.get(to)!.kind === 'crypto' ? CRYPTO : FIAT
+    const c1 = nodeByName.get(from)!.kind === 'crypto' ? CRYPTO_COLOR : FIAT_COLOR
+    const c2 = nodeByName.get(to)!.kind === 'crypto' ? CRYPTO_COLOR : FIAT_COLOR
     return {
       a,
       b,
@@ -747,8 +747,8 @@ onMounted(() => {
     }
 
     // Nodes.
-    for (let i = 0; i < NODES.length; i++) {
-      const n = NODES[i]
+    for (let i = 0; i < GLOBE_NODES.length; i++) {
+      const n = GLOBE_NODES[i]
       const v = nodeVec[i]
       project(v[0], v[1], v[2], sc, ss, 1.003)
       if (!pVis) {
@@ -758,7 +758,7 @@ onMounted(() => {
       if (fade <= 0) {
         continue
       }
-      const col = n.kind === 'crypto' ? CRYPTO : FIAT
+      const col = n.kind === 'crypto' ? CRYPTO_COLOR : FIAT_COLOR
       const ph = animated ? ((now / 2200 + i * 0.19) % 1) : 0.2
       g.strokeStyle = rgba(col, (1 - ph) * 0.6 * fade)
       g.lineWidth = 1.2 * dpr

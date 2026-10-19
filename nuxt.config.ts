@@ -54,6 +54,8 @@ export default defineNuxtConfig({
     'devtools/**',
     'server-middleware/**',
     'layouts/default.vue',
+    // Left over from an earlier globe attempt. Safe to delete from the repo.
+    'utils/globe.ts',
     'plugins/*',
     '!plugins/vuetify.client.ts',
   ],
