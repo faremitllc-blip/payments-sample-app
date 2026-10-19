@@ -42,24 +42,9 @@
         </p>
       </div>
 
-      <div class="fm-slip-wrap fm-print" aria-hidden="true">
-        <div class="fm-slip">
-          <p class="fm-slip-title">Money in</p>
-          <p class="fm-slip-amount">100.00 USDC</p>
-          <div class="fm-slip-row">
-            <span>From</span>
-            <span>Euro bank transfer</span>
-          </div>
-          <div class="fm-slip-row">
-            <span>Into</span>
-            <span>Your wallet</span>
-          </div>
-          <div class="fm-slip-row">
-            <span>Status</span>
-            <span>Complete</span>
-          </div>
-          <p class="fm-slip-sample">Sample receipt</p>
-        </div>
+      <!-- The rotating Earth shows on this landing page only. -->
+      <div class="mo-globe-slot">
+        <LazyGlobeHero />
       </div>
     </section>
 

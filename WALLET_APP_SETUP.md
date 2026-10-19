@@ -195,3 +195,7 @@ cropped to a 256 x 256 JPEG in the browser and saved with the profile.
 - The server remembers the signed-in user for 60 seconds, the wallet row for 2 minutes and the Bank status for 15 seconds (the "check status" buttons skip that).
 - Only the Vuetify parts Mondo uses are loaded; the old sample-app plugins, stores and debug pages are left out of the build.
 - Delete these old files from GitHub if still there: `pages/developers.vue`, `layouts/default.vue`, `components/WalletCards.vue`.
+
+## Landing-page globe (v24)
+
+The rotating Earth (day and night, city lights, clouds, routes between crypto and fiat hubs) is `components/GlobeHero.vue`. It is used only in `pages/index.vue`, so it never loads inside the wallet. The map data (`utils/globeData.ts`, from Natural Earth, public domain) downloads separately, only on the landing page. The routes are illustrative, not live payment data. It pauses when off screen or when the tab is hidden, and holds still for people who prefer reduced motion.
