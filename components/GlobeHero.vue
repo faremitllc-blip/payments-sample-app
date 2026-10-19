@@ -6,10 +6,6 @@
     aria-label="A rotating Earth, half in daylight and half in night. Glowing routes link crypto hubs and fiat banking hubs around the world."
   >
     <canvas ref="cv" class="mo-globe-canvas" aria-hidden="true"></canvas>
-    <ul class="mo-globe-legend" aria-hidden="true">
-      <li><span class="mo-globe-dot is-crypto"></span>Crypto nodes</li>
-      <li><span class="mo-globe-dot is-fiat"></span>Fiat nodes</li>
-    </ul>
   </div>
 </template>
 
@@ -31,8 +27,12 @@ const TMASK = TW - 1
 const CMASK = CW - 1
 const TILT = (18 * Math.PI) / 180
 const SPIN_SPEED = (2 * Math.PI) / 80000 // one turn every 80 seconds
-const CRYPTO_COLOR = [56, 214, 255]
-const FIAT_COLOR = [255, 104, 70]
+// Cool blue for crypto nodes, warm orange for fiat nodes. Each mode has its own
+// strength so the routes stay clear on a dark sky and on a light page.
+const PALETTE = {
+  dark: { crypto: [56, 214, 255], fiat: [255, 104, 70] },
+  light: { crypto: [0, 140, 214], fiat: [236, 62, 32] },
+}
 
 type NodeKind = 'crypto' | 'fiat'
 interface GlobeNode {
@@ -396,6 +396,8 @@ onMounted(() => {
   let disc32: Uint32Array | null = null
 
   let tex: Textures | null = null
+  // The page decides the mode. The globe follows it so both share one background.
+  let isDark = document.documentElement.dataset.moTheme !== 'light'
   let stars: Array<{ x: number; y: number; r: number; a: number; p: number }> = []
 
   const nodeByName = new Map<string, GlobeNode>()
@@ -427,16 +429,16 @@ onMounted(() => {
       cb.push(Math.sin(t * w) / sinw)
       alt.push(peak * Math.sin(Math.PI * t))
     }
-    const c1 = nodeByName.get(from)!.kind === 'crypto' ? CRYPTO_COLOR : FIAT_COLOR
-    const c2 = nodeByName.get(to)!.kind === 'crypto' ? CRYPTO_COLOR : FIAT_COLOR
+    const k1 = nodeByName.get(from)!.kind
+    const k2 = nodeByName.get(to)!.kind
     return {
       a,
       b,
       ca,
       cb,
       alt,
-      c1,
-      c2,
+      k1,
+      k2,
       period: 5200 + ((i * 937) % 2600),
       offset: (i * 0.37) % 1,
     }
@@ -645,8 +647,10 @@ onMounted(() => {
     const g = ctx!
     g.clearRect(0, 0, W, H)
 
-    // Stars.
-    for (const s of stars) {
+    const pal = isDark ? PALETTE.dark : PALETTE.light
+
+    // Stars (dark mode only).
+    for (const s of isDark ? stars : []) {
       const tw = animated ? 0.75 + 0.25 * Math.sin(now / 900 + s.p) : 1
       g.fillStyle = `rgba(210,225,255,${(s.a * tw).toFixed(3)})`
       g.fillRect(s.x, s.y, s.r, s.r)
@@ -654,9 +658,15 @@ onMounted(() => {
 
     // Soft glow of the atmosphere around the planet.
     const glow = g.createRadialGradient(cx, cy, R * 0.94, cx, cy, R * 1.3)
-    glow.addColorStop(0, 'rgba(90,150,255,0.5)')
-    glow.addColorStop(0.35, 'rgba(70,120,240,0.18)')
-    glow.addColorStop(1, 'rgba(60,100,230,0)')
+    if (isDark) {
+      glow.addColorStop(0, 'rgba(90,150,255,0.5)')
+      glow.addColorStop(0.35, 'rgba(70,120,240,0.18)')
+      glow.addColorStop(1, 'rgba(60,100,230,0)')
+    } else {
+      glow.addColorStop(0, 'rgba(70,120,255,0.38)')
+      glow.addColorStop(0.35, 'rgba(90,140,255,0.13)')
+      glow.addColorStop(1, 'rgba(90,140,255,0)')
+    }
     g.fillStyle = glow
     g.beginPath()
     g.arc(cx, cy, R * 1.3, 0, Math.PI * 2)
@@ -683,6 +693,8 @@ onMounted(() => {
     const sy = new Float32Array(STEPS + 1)
     const sv = new Uint8Array(STEPS + 1)
     for (const rt of routes) {
+      const c1 = rt.k1 === 'crypto' ? pal.crypto : pal.fiat
+      const c2 = rt.k2 === 'crypto' ? pal.crypto : pal.fiat
       for (let k = 0; k <= STEPS; k++) {
         const x = rt.ca[k] * rt.a[0] + rt.cb[k] * rt.b[0]
         const y = rt.ca[k] * rt.a[1] + rt.cb[k] * rt.b[1]
@@ -698,7 +710,7 @@ onMounted(() => {
         if (!sv[k] || !sv[k + 1]) {
           continue
         }
-        g.strokeStyle = rgba(blend(rt.c1, rt.c2, k / STEPS), 0.5)
+        g.strokeStyle = rgba(blend(c1, c2, k / STEPS), 0.5)
         g.beginPath()
         g.moveTo(sx[k], sy[k])
         g.lineTo(sx[k + 1], sy[k + 1])
@@ -710,22 +722,23 @@ onMounted(() => {
         head = ((now / rt.period + rt.offset) % 1.4) - 0.05
       }
       const tail = 0.2
+      const wash = isDark ? 0.45 : 0.12
       for (let k = 0; k < STEPS; k++) {
         const t = (k + 0.5) / STEPS
         if (!sv[k] || !sv[k + 1] || t > head || t < head - tail) {
           continue
         }
         const f = (t - (head - tail)) / tail
-        const col = blend(rt.c1, rt.c2, t)
+        const col = blend(c1, c2, t)
         g.lineWidth = 3.6 * dpr
-        g.strokeStyle = 'rgba(4,10,34,' + (0.35 * f).toFixed(3) + ')'
+        g.strokeStyle = (isDark ? 'rgba(4,10,34,' : 'rgba(255,255,255,') + (0.35 * f).toFixed(3) + ')'
         g.beginPath()
         g.moveTo(sx[k], sy[k])
         g.lineTo(sx[k + 1], sy[k + 1])
         g.stroke()
         g.lineWidth = 2.2 * dpr
         g.strokeStyle = rgba(
-          [mix(col[0], 255, f * 0.45), mix(col[1], 255, f * 0.45), mix(col[2], 255, f * 0.45)],
+          [mix(col[0], 255, f * wash), mix(col[1], 255, f * wash), mix(col[2], 255, f * wash)],
           0.25 + 0.75 * f * f,
         )
         g.beginPath()
@@ -735,7 +748,7 @@ onMounted(() => {
       }
       const hk = Math.round(head * STEPS)
       if (animated && hk > 0 && hk <= STEPS && sv[hk]) {
-        const col = blend(rt.c1, rt.c2, head)
+        const col = blend(c1, c2, head)
         const halo = g.createRadialGradient(sx[hk], sy[hk], 0, sx[hk], sy[hk], 7 * dpr)
         halo.addColorStop(0, rgba(col, 0.9))
         halo.addColorStop(1, rgba(col, 0))
@@ -758,7 +771,7 @@ onMounted(() => {
       if (fade <= 0) {
         continue
       }
-      const col = n.kind === 'crypto' ? CRYPTO_COLOR : FIAT_COLOR
+      const col = n.kind === 'crypto' ? pal.crypto : pal.fiat
       const ph = animated ? ((now / 2200 + i * 0.19) % 1) : 0.2
       g.strokeStyle = rgba(col, (1 - ph) * 0.6 * fade)
       g.lineWidth = 1.2 * dpr
@@ -855,6 +868,14 @@ onMounted(() => {
   if (watcher) {
     watcher.observe(boxEl)
   }
+  const modeWatcher = new MutationObserver(() => {
+    isDark = document.documentElement.dataset.moTheme !== 'light'
+    render(performance.now(), spinAt(performance.now()), !reduced)
+  })
+  modeWatcher.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['data-mo-theme'],
+  })
   const onVisibility = () => sync()
   document.addEventListener('visibilitychange', onVisibility)
 
@@ -863,6 +884,7 @@ onMounted(() => {
     running = false
     cancelAnimationFrame(rafId)
     document.removeEventListener('visibilitychange', onVisibility)
+    modeWatcher.disconnect()
     if (resizer) {
       resizer.disconnect()
     }

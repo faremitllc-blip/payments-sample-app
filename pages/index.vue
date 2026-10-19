@@ -1,6 +1,12 @@
 <template>
-  <div>
-    <section class="fm-wrap fm-hero">
+  <div class="mo-landing">
+    <div class="mo-hero-wrap">
+      <!-- The rotating Earth is part of the page background. It shows on this landing page only. -->
+      <div class="mo-globe-slot">
+        <LazyGlobeHero />
+      </div>
+
+      <section class="fm-wrap fm-hero">
       <div>
         <h1>Bank accounts and digital dollars, together.</h1>
         <p class="fm-lede">
@@ -42,11 +48,8 @@
         </p>
       </div>
 
-      <!-- The rotating Earth shows on this landing page only. -->
-      <div class="mo-globe-slot">
-        <LazyGlobeHero />
-      </div>
-    </section>
+      </section>
+    </div>
 
     <section class="fm-wrap fm-actions" aria-label="What you can do">
       <NuxtLink :to="bankLink" class="fm-tile fm-tile-bank">

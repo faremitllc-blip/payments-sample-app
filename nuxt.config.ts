@@ -21,6 +21,13 @@ export default defineNuxtConfig({
           content: 'Mondo: US, euro and pound bank details and a USDC wallet in one app.',
         },
       ],
+      script: [
+        {
+          // Sets the landing page's light or dark mode before the first paint.
+          innerHTML:
+            "try{if(location.pathname==='/'){var t=localStorage.getItem('mondo-theme');if(t!=='light'&&t!=='dark'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.dataset.moTheme=t}}catch(e){}",
+        },
+      ],
       link: [
         { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
         // Open the connections to the icon and font hosts early.

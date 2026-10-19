@@ -8,6 +8,19 @@
         </NuxtLink>
 
         <nav class="fm-nav" aria-label="Main">
+          <v-btn
+            v-if="onLanding"
+            icon
+            variant="text"
+            color="secondary"
+            class="mo-theme-toggle"
+            :aria-label="theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
+            @click="toggle"
+          >
+            <v-icon>
+              {{ theme === 'dark' ? 'mdi-white-balance-sunny' : 'mdi-weather-night' }}
+            </v-icon>
+          </v-btn>
           <template v-if="session">
             <v-btn variant="text" to="/wallet" color="secondary">Wallet</v-btn>
             <v-btn variant="text" to="/bank" color="secondary">Bank</v-btn>
@@ -52,6 +65,25 @@ const { mode, loadMode } = useAppMode()
 
 load()
 loadMode()
+
+// Light and dark mode belong to the landing page only.
+const route = useRoute()
+const onLanding = computed(() => route.path === '/')
+const { theme, start, stop, toggle } = useLandingTheme()
+
+onMounted(() => {
+  if (onLanding.value) {
+    start()
+  }
+})
+watch(onLanding, (value) => {
+  if (value) {
+    start()
+  } else {
+    stop()
+  }
+})
+onBeforeUnmount(stop)
 
 async function logOut() {
   await signOut()

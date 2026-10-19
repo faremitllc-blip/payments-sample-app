@@ -2430,19 +2430,58 @@
 }
 
 
-/* ---- Landing page globe ---- */
+/* ---- Landing page: globe as the page background, light and dark mode ---- */
+
+/* The mode is set on <html> by the landing page (data-mo-theme). The page, the
+   header, the sections and the globe all follow it, so they share one background. */
+html[data-mo-theme='light'] {
+  background: #f3f5fa;
+}
+
+html[data-mo-theme='dark'] {
+  background: #060c24;
+  color-scheme: dark;
+}
+
+html[data-mo-theme='light'] .fm.v-application {
+  --fm-page-glow: #dbe6ff;
+  background:
+    radial-gradient(1100px 760px at 76% 22%, var(--fm-page-glow) 0%, rgba(219, 230, 255, 0) 64%),
+    #f3f5fa !important;
+}
+
+html[data-mo-theme='dark'] .fm.v-application {
+  --fm-paper: #060c24;
+  --fm-ink: #eef2ff;
+  --fm-muted: #a3aed0;
+  --fm-kelp: #6c93ff;
+  --fm-kelp-deep: #93afff;
+  --fm-tide: #12214f;
+  --fm-line: #1f2f66;
+  background:
+    radial-gradient(1100px 760px at 76% 22%, #14307f 0%, rgba(20, 48, 127, 0) 64%),
+    #060c24 !important;
+}
+
+/* The globe sits behind the hero text, on the right. No box around it. */
+.mo-landing {
+  overflow-x: clip;
+}
+
+.mo-hero-wrap {
+  position: relative;
+  min-height: 600px;
+}
 
 .mo-globe-slot {
-  position: relative;
-  width: 100%;
-  max-width: 600px;
+  position: absolute;
+  top: 50%;
+  right: -4%;
+  z-index: 0;
+  width: min(780px, 58vw);
   aspect-ratio: 1 / 1;
-  justify-self: center;
-  overflow: hidden;
-  border-radius: 32px;
-  background:
-    radial-gradient(120% 90% at 30% 20%, #10246a 0%, #070f2c 55%, #040818 100%);
-  box-shadow: 0 24px 50px rgba(8, 16, 50, 0.28);
+  transform: translateY(-50%);
+  pointer-events: none;
 }
 
 .mo-globe {
@@ -2456,50 +2495,77 @@
   height: 100%;
 }
 
-.mo-globe-legend {
-  position: absolute;
-  left: 20px;
-  bottom: 18px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 10px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.mo-hero-wrap .fm-hero {
+  position: relative;
+  z-index: 1;
+  grid-template-columns: minmax(0, 1fr);
 }
 
-.mo-globe-legend li {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  color: #eef2ff;
-  font-size: 0.82rem;
-  font-weight: 600;
+.mo-hero-wrap .fm-hero > div {
+  max-width: 560px;
 }
 
-.mo-globe-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+.mo-theme-toggle {
+  margin-right: 4px;
 }
 
-.mo-globe-dot.is-crypto {
-  background: #38d6ff;
-  box-shadow: 0 0 10px #38d6ff;
+html[data-mo-theme='dark'] .fm .fm-tile {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--fm-line);
 }
 
-.mo-globe-dot.is-fiat {
-  background: #ff6846;
-  box-shadow: 0 0 10px #ff6846;
+html[data-mo-theme='dark'] .fm .fm-tile:hover {
+  border-color: var(--fm-kelp);
+}
+
+html[data-mo-theme='dark'] .fm .fm-tile-send {
+  background: #2554e8;
+  border-color: #2554e8;
+  color: #ffffff !important;
+}
+
+html[data-mo-theme='dark'] .fm .fm-tile-wallet {
+  background: var(--fm-tide);
+  border-color: var(--fm-tide);
+}
+
+html[data-mo-theme='dark'] .fm .fm-tile-bank {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--fm-kelp);
+}
+
+html[data-mo-theme='dark'] .fm .fm-chips li {
+  background: var(--fm-tide);
+}
+
+html[data-mo-theme='dark'] .fm .fm-band {
+  background: rgba(255, 255, 255, 0.04);
+  border-top: 1px solid var(--fm-line);
+  border-bottom: 1px solid var(--fm-line);
+  color: var(--fm-ink);
+}
+
+html[data-mo-theme='light'] .fm .fm-band {
+  background: rgba(20, 26, 51, 0.94);
 }
 
 @media (max-width: 860px) {
+  .mo-hero-wrap {
+    min-height: 0;
+  }
+
   .mo-globe-slot {
-    max-width: 480px;
-    border-radius: 24px;
+    position: relative;
+    top: auto;
+    right: auto;
+    width: min(520px, 100%);
+    margin: 0 auto -24px;
+    transform: none;
+  }
+
+  /* On a phone the globe sits under the text instead of behind it. */
+  .mo-hero-wrap {
+    display: flex;
+    flex-direction: column-reverse;
   }
 }

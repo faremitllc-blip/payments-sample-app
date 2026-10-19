@@ -199,3 +199,7 @@ cropped to a 256 x 256 JPEG in the browser and saved with the profile.
 ## Landing-page globe (v24)
 
 The rotating Earth (day and night, city lights, clouds, routes between crypto and fiat hubs) is `components/GlobeHero.vue`. It is used only in `pages/index.vue`, so it never loads inside the wallet. The map data (`utils/globeData.ts`, from Natural Earth, public domain) downloads separately, only on the landing page. The routes are illustrative, not live payment data. It pauses when off screen or when the tab is hidden, and holds still for people who prefer reduced motion.
+
+## Landing-page light and dark mode (v26)
+
+The landing page has a sun/moon button in the top bar. The choice is saved in the browser and defaults to the device setting. The mode is written to `<html data-mo-theme>`, and both the page styles and the globe follow it, so they always share one background. It only applies on the landing page, and the wallet screens are unchanged.
