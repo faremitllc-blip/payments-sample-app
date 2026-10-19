@@ -23,17 +23,18 @@ export default defineNuxtConfig({
       ],
       link: [
         { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+        // Open the connections to the icon and font hosts early.
+        { rel: 'preconnect', href: 'https://cdn.jsdelivr.net', crossorigin: '' },
+        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
         {
+          // Pinned to one version so browsers can cache it for good.
           rel: 'stylesheet',
-          href: 'https://cdn.jsdelivr.net/npm/@mdi/font@latest/css/materialdesignicons.min.css',
+          href: 'https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css',
         },
         {
           rel: 'stylesheet',
-          href: 'https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900&display=swap',
-        },
-        {
-          rel: 'stylesheet',
-          href: 'https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap',
+          href: 'https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap',
         },
       ],
     },
@@ -41,32 +42,21 @@ export default defineNuxtConfig({
 
   css: ['vuetify/styles', '~/assets/css/main.css', '~/assets/css/app.css'],
 
-  plugins: [
-    '~/plugins/vuetify.client.ts',
-    '~/plugins/paymentsApi.ts',
-    '~/plugins/settlementsApi.ts',
-    '~/plugins/walletsApi.ts',
-    '~/plugins/paymentIntentsApi.ts',
-    '~/plugins/mocksApi.ts',
-    '~/plugins/stablefxTradesApi.ts',
-    '~/plugins/businessAccount/addressesApi.ts',
-    '~/plugins/businessAccount/balancesApi.ts',
-    '~/plugins/businessAccount/bankAccountsApi.ts',
-    '~/plugins/businessAccount/cbitAccountsApi.ts',
-    '~/plugins/businessAccount/xpayAccountsApi.ts',
-    '~/plugins/businessAccount/depositsApi.ts',
-    '~/plugins/businessAccount/payoutsApi.ts',
-    '~/plugins/businessAccount/transfersApi.ts',
-    '~/plugins/daa/index.ts',
-    '~/plugins/cryptoPaymentMetadataApi.ts',
-    '~/plugins/cryptoPaymentsApi.ts',
-    '~/plugins/beta/addressBookApi.ts',
-    '~/plugins/payoutsApi.ts',
-    '~/plugins/tradesApi.ts',
-    '~/plugins/circleWalletsApi.ts',
-  ],
+  plugins: ['~/plugins/vuetify.client.ts'],
 
-  modules: ['@pinia/nuxt', '@pinia-plugin-persistedstate/nuxt'],
+  // Old pieces of the original Circle sample app. Mondo does not use them, so
+  // they are kept out of the build even if their files are still in the repo.
+  ignore: [
+    'pages/debug/**',
+    'stores/**',
+    'lib/**',
+    'helpers/**',
+    'devtools/**',
+    'server-middleware/**',
+    'layouts/default.vue',
+    'plugins/*',
+    '!plugins/vuetify.client.ts',
+  ],
 
   runtimeConfig: {
     // The private keys which are only available within server-side

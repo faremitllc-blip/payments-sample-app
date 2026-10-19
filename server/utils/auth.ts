@@ -1,4 +1,6 @@
+import { createHash } from 'node:crypto'
 import type { H3Event } from 'h3'
+import { memoGet, memoSet } from './memo'
 
 export interface AuthedUser {
   id: string
@@ -37,6 +39,15 @@ export async function requireUser(event: H3Event): Promise<AuthedUser> {
     throw createError({ statusCode: 401, statusMessage: 'Please sign in' })
   }
 
+  // The same token is sent with every request, so remember a good answer for a
+  // minute instead of asking Supabase each time. A signed-out token stops
+  // working within that minute at most.
+  const cacheKey = `auth:${createHash('sha256').update(token).digest('hex')}`
+  const cached = memoGet<AuthedUser>(cacheKey)
+  if (cached) {
+    return cached
+  }
+
   let user: SupabaseUserResponse | null = null
   try {
     user = await $fetch<SupabaseUserResponse>(`${baseUrl}/auth/v1/user`, {
@@ -53,11 +64,13 @@ export async function requireUser(event: H3Event): Promise<AuthedUser> {
     })
   }
 
-  return {
+  const authed: AuthedUser = {
     id: user.id,
     email: user.email || '',
     emailConfirmed: Boolean(user.email_confirmed_at || user.confirmed_at),
   }
+  memoSet(cacheKey, authed, 60_000)
+  return authed
 }
 
 const rateBuckets = new Map<string, number[]>()

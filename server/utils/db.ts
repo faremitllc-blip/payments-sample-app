@@ -1,3 +1,5 @@
+import { memoDelete, memoGet, memoSet } from './memo'
+
 /**
  * Minimal Supabase database access over its REST API (PostgREST), using the
  * service role key. The key only exists on the server. The tables have row
@@ -87,11 +89,22 @@ async function dbRequest<T>(
   }
 }
 
+// A wallet never changes once it exists, so a found wallet is remembered for a
+// couple of minutes. "No wallet yet" is never remembered.
 export async function getWalletRow(userId: string): Promise<WalletRow | null> {
+  const key = `wallet:${userId}`
+  const cached = memoGet<WalletRow>(key)
+  if (cached) {
+    return cached
+  }
   const rows = await dbRequest<WalletRow[]>(
     `wallets?user_id=eq.${encodeURIComponent(userId)}&select=*&limit=1`,
   )
-  return rows.length > 0 ? rows[0] : null
+  if (rows.length === 0) {
+    return null
+  }
+  memoSet(key, rows[0], 120_000)
+  return rows[0]
 }
 
 export async function saveWalletRow(row: WalletRow): Promise<WalletRow> {
@@ -101,6 +114,7 @@ export async function saveWalletRow(row: WalletRow): Promise<WalletRow> {
     prefer: 'resolution=ignore-duplicates,return=representation',
   })
   if (rows.length > 0) {
+    memoDelete(`wallet:${row.user_id}`)
     return rows[0]
   }
   // Another request saved a wallet for this user first. Use that one.

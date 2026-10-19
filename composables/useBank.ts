@@ -36,13 +36,14 @@ export function useBank() {
   const accounts = useState<BankAccount[]>('fm-bank-accounts', () => [])
   const deposits = useState<BankDeposit[]>('fm-bank-deposits', () => [])
 
-  async function load(): Promise<void> {
+  /** `fresh` skips the 15-second server cache, e.g. after the user finishes verification. */
+  async function load(fresh = false): Promise<void> {
     const result = await api<{
       configured: boolean
       live: boolean
       status: BankStatus | null
       accounts: BankAccount[]
-    }>('/api/bank')
+    }>(fresh ? '/api/bank?fresh=1' : '/api/bank')
     configured.value = result.configured
     live.value = result.live
     status.value = result.status

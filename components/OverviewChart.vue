@@ -50,7 +50,7 @@
         <path
           :d="outLine"
           fill="none"
-          stroke="#8f98b3"
+          stroke="#ff4b33"
           stroke-width="2"
           stroke-dasharray="5 5"
           stroke-linecap="round"

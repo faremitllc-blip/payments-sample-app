@@ -271,11 +271,10 @@ const { mode, loadMode } = useAppMode()
 loadMode()
 const {
   wallet,
+  walletLoaded,
   usdc,
   activity,
-  loadWallet,
-  loadBalance,
-  loadActivity,
+  loadDashboard,
   createWallet,
 } = useWallet()
 const { copied, copy } = useCopy()
@@ -301,7 +300,8 @@ const bankSummary = computed(() =>
 )
 const anyBankOpen = computed(() => bankSummary.value.some((b) => b.open))
 
-const loading = ref(true)
+// Show what we already have right away and refresh it in the background.
+const loading = ref(!walletLoaded.value)
 const creating = ref(false)
 const refreshing = ref(false)
 const error = ref('')
@@ -374,8 +374,7 @@ const setupPercent = computed(() =>
 
 async function loadAll() {
   now.value = new Date()
-  await loadWallet()
-  await Promise.all([loadBalance(), loadActivity()])
+  await loadDashboard()
   // The bank summary is a bonus. If it cannot load, the home screen still works.
   loadBank().catch(() => {})
 }

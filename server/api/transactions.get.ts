@@ -1,4 +1,5 @@
 import { requireUser } from '../utils/auth'
+import { toActivityItems } from '../utils/activity'
 import { listTransactions } from '../utils/circle'
 import { getWalletRow } from '../utils/db'
 
@@ -11,18 +12,5 @@ export default defineEventHandler(async (event) => {
   }
 
   const items = await listTransactions(wallet.circle_wallet_id)
-  return {
-    transactions: items.map((t) => {
-      const sent = t.transactionType === 'OUTBOUND'
-      return {
-        id: t.id,
-        direction: sent ? 'sent' : 'received',
-        state: t.state,
-        amount: t.amounts && t.amounts.length > 0 ? t.amounts[0] : '',
-        counterparty: sent ? t.destinationAddress || '' : t.sourceAddress || '',
-        date: t.createDate || '',
-        txHash: t.txHash || '',
-      }
-    }),
-  }
+  return { transactions: toActivityItems(items) }
 })

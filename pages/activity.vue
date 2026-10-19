@@ -41,9 +41,9 @@
 definePageMeta({ layout: 'dash', middleware: 'auth' })
 useHead({ title: 'Activity' })
 
-const { wallet, activity, loadWallet, loadActivity } = useWallet()
+const { wallet, walletLoaded, activity, loadDashboard } = useWallet()
 
-const loading = ref(true)
+const loading = ref(!walletLoaded.value)
 const refreshing = ref(false)
 const error = ref('')
 
@@ -51,7 +51,7 @@ async function refresh() {
   error.value = ''
   refreshing.value = true
   try {
-    await loadActivity()
+    await loadDashboard()
   } catch (err: any) {
     error.value = errorText(err)
   } finally {
@@ -61,8 +61,7 @@ async function refresh() {
 
 onMounted(async () => {
   try {
-    await loadWallet()
-    await loadActivity()
+    await loadDashboard()
   } catch (err: any) {
     error.value = errorText(err)
   } finally {

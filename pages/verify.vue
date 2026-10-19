@@ -171,7 +171,7 @@ const frameSrc = computed(() => {
 })
 
 async function refresh() {
-  await load()
+  await load(true)
   if (status.value?.approved) {
     await navigateTo('/bank')
   }

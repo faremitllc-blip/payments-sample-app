@@ -109,6 +109,20 @@ export function useWallet() {
     activity.value = result.transactions
   }
 
+  // One request for the wallet, balance and activity (they load at the same
+  // time on the server), instead of three requests one after the other.
+  async function loadDashboard(): Promise<void> {
+    const result = await api<{
+      wallet: WalletInfo | null
+      usdc: string
+      transactions: ActivityItem[]
+    }>('/api/dashboard')
+    wallet.value = result.wallet
+    walletLoaded.value = true
+    usdc.value = result.usdc
+    activity.value = result.transactions
+  }
+
   async function createWallet(): Promise<void> {
     const result = await api<{ wallet: WalletInfo }>('/api/wallet', {
       method: 'POST',
@@ -133,6 +147,7 @@ export function useWallet() {
     loadWallet,
     loadBalance,
     loadActivity,
+    loadDashboard,
     createWallet,
     reset,
   }

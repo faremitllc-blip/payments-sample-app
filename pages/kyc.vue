@@ -222,7 +222,7 @@ async function refresh() {
   error.value = ''
   refreshing.value = true
   try {
-    await load()
+    await load(true)
   } catch (err: any) {
     error.value = errorText(err)
   } finally {

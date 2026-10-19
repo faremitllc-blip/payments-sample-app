@@ -12,7 +12,9 @@ export default defineEventHandler(async (event) => {
   }
 
   const row = await getBankCustomer(user.id)
-  const status = row ? await refreshBankStatus(row) : null
+  // Screens may reuse a very recent answer. "Check again" buttons ask with ?fresh=1.
+  const fresh = String(getQuery(event).fresh || '') === '1'
+  const status = row ? await refreshBankStatus(row, { cached: !fresh }) : null
   const accounts = await listBankAccounts(user.id)
 
   return {

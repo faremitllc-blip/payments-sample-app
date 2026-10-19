@@ -447,8 +447,7 @@ async function copyRow(key: string, value: string) {
 
 onMounted(async () => {
   try {
-    await loadWallet()
-    await load()
+    await Promise.all([loadWallet(), load()])
     if (status.value?.approved) {
       await loadDeposits()
     }

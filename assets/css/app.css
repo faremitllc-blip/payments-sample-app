@@ -10,6 +10,8 @@
   --fm-tide: #e3ebff;
   --fm-aqua: #a8e4ee;
   --fm-marigold: #f5a04a;
+  --fm-orange: #ff4b33;
+  --fm-orange-soft: #ffe6e1;
   --fm-line: #e3e7f1;
   --fm-error: #b3261e;
 }
@@ -1022,7 +1024,7 @@
 }
 
 .mo-dot-out {
-  background: #8f98b3;
+  background: var(--fm-orange);
 }
 
 .mo-foot {
@@ -1343,8 +1345,8 @@
 }
 
 .mo-tx-icon.sent {
-  background: #fde6d6;
-  color: #9a3d12;
+  background: var(--fm-orange-soft);
+  color: #c22a12;
 }
 
 @media (max-width: 1280px) {
@@ -2390,4 +2392,39 @@
     flex-direction: column;
     align-items: flex-start;
   }
+}
+
+
+/* ---- Secondary colour: Mondo orange (#FF4B33) ---- */
+
+/* The name. Large bold text, so orange on white is readable (3:1 is enough). */
+.fm-logo,
+.mo-brand,
+.mo-brand-name {
+  color: var(--fm-orange) !important;
+}
+
+.fm-logo-mark {
+  background: var(--fm-kelp);
+  border-top-color: var(--fm-orange);
+}
+
+/* Orange is too light for small text on white, so secondary outlined and text
+   buttons keep dark text and show the colour in the border and on hover. */
+.v-btn.text-secondary {
+  color: var(--fm-ink) !important;
+}
+
+.v-btn--variant-outlined.text-secondary {
+  border-color: var(--fm-orange);
+  border-width: 2px;
+}
+
+.v-btn--variant-outlined.text-secondary:hover,
+.v-btn--variant-text.text-secondary:hover {
+  background: var(--fm-orange-soft);
+}
+
+.v-btn.bg-secondary {
+  color: #141a33 !important;
 }

@@ -188,3 +188,10 @@ How it stays safe:
 Run `supabase/add-profiles.sql` once in the Supabase SQL Editor (New query,
 paste, Run). It adds one small table for display names and photos. Photos are
 cropped to a 256 x 256 JPEG in the browser and saved with the profile.
+
+## Speed notes (v23)
+
+- The home and Activity screens load wallet, balance and activity in one request (`/api/dashboard`), and show the last data straight away while refreshing.
+- The server remembers the signed-in user for 60 seconds, the wallet row for 2 minutes and the Bank status for 15 seconds (the "check status" buttons skip that).
+- Only the Vuetify parts Mondo uses are loaded; the old sample-app plugins, stores and debug pages are left out of the build.
+- Delete these old files from GitHub if still there: `pages/developers.vue`, `layouts/default.vue`, `components/WalletCards.vue`.
