@@ -61,6 +61,7 @@ const appName = APP_NAME
 useHead({ titleTemplate: (title) => (title ? `${title} - ${appName}` : appName) })
 const { session, load, signOut } = useAuth()
 const { reset } = useWallet()
+const { reset: resetBank } = useBank()
 const { mode, loadMode } = useAppMode()
 
 load()
@@ -86,6 +87,7 @@ watch(onLanding, (value) => {
 onBeforeUnmount(stop)
 
 async function logOut() {
+  resetBank()
   await signOut()
   reset()
   await navigateTo('/')

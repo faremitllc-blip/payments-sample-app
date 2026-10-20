@@ -203,3 +203,7 @@ The rotating dot-matrix globe (lit sun side, dim night side, routes between cryp
 ## Landing-page light and dark mode (v26)
 
 The landing page has a sun/moon button in the top bar. The choice is saved in the browser and defaults to the device setting. The mode is written to `<html data-mo-theme>`, and both the page styles and the globe follow it, so they always share one background. It only applies on the landing page, and the wallet screens are unchanged.
+
+## Bank page loads from a saved copy (v28)
+
+The Bank page shows the last known details straight away (kept per email on this device, without verification links, and removed on log out) and refreshes them quietly, with a small "Updating…" note. Deposit history loads after the details. On the server, an approved customer's status is reused for 2 minutes instead of 15 seconds.

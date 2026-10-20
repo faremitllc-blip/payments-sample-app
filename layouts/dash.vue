@@ -126,9 +126,10 @@ const initial = computed(() =>
 )
 
 async function logOut() {
+  // Clear the saved bank details while we still know whose they are.
+  resetBank()
   await signOut()
   reset()
-  resetBank()
   resetAgent()
   resetProfile()
   await navigateTo('/')

@@ -81,7 +81,8 @@ export async function refreshBankStatus(
     approved: kycStatus === 'approved' && tosStatus === 'approved' && !!customerId,
     endorsements,
   }
-  memoSet(cacheKey, status, 15_000)
+  // A finished verification rarely changes, so it can be reused for longer.
+  memoSet(cacheKey, status, status.approved ? 120_000 : 15_000)
   return status
 }
 

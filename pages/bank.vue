@@ -16,6 +16,14 @@
       {{ error }}
     </v-alert>
 
+    <p
+      v-if="!loading && refreshingQuietly"
+      role="status"
+      class="fm-balance-label mo-muted"
+    >
+      Updating…
+    </p>
+
     <p v-if="loading" role="status" class="fm-balance-label">Loading…</p>
 
     <div v-else-if="!configured" class="mo-card mo-empty-card mt-4">
@@ -25,7 +33,7 @@
       </p>
     </div>
 
-    <div v-else-if="!wallet && live" class="mo-card mo-empty-card mt-4">
+    <div v-else-if="walletLoaded && !wallet && live" class="mo-card mo-empty-card mt-4">
       <h2>Create your wallet first</h2>
       <p class="mo-muted mt-2 mb-4">
         Bank deposits are delivered to your wallet, so you need one before you
@@ -55,7 +63,7 @@
       </v-alert>
 
       <v-alert
-        v-if="!live && !wallet"
+        v-if="walletLoaded && !live && !wallet"
         type="info"
         variant="tonal"
         class="mb-4"
@@ -316,13 +324,15 @@ import {
 definePageMeta({ layout: 'dash', middleware: 'auth' })
 useHead({ title: 'Bank accounts' })
 
-const { wallet, loadWallet } = useWallet()
+const { wallet, walletLoaded, loadWallet } = useWallet()
 const {
   configured,
   live,
   status,
   accounts,
   deposits,
+  loaded,
+  restore,
   load,
   loadDeposits,
   startVerification,
@@ -333,7 +343,11 @@ const {
   simulateDeposit,
 } = useBank()
 
-const loading = ref(true)
+// Show the last known details at once (from this session or this device) and
+// refresh them in the background. "Loading" only shows when there is nothing yet.
+const hadSaved = restore()
+const loading = ref(!hadSaved)
+const refreshingQuietly = ref(hadSaved)
 const busy = ref(false)
 const busyCurrency = ref('')
 const error = ref('')
@@ -447,14 +461,20 @@ async function copyRow(key: string, value: string) {
 
 onMounted(async () => {
   try {
-    await Promise.all([loadWallet(), load()])
+    const wallets = loadWallet()
+    await load()
+    loading.value = false
+    // The history is not needed to show the details, so it loads after them.
     if (status.value?.approved) {
-      await loadDeposits()
+      loadDeposits().catch(() => undefined)
     }
+    await wallets
   } catch (err: any) {
+    // With saved details on screen, a failed refresh must not hide them.
     error.value = errorText(err)
   } finally {
     loading.value = false
+    refreshingQuietly.value = false
   }
 })
 </script>
