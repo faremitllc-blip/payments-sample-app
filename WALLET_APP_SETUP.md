@@ -198,7 +198,7 @@ cropped to a 256 x 256 JPEG in the browser and saved with the profile.
 
 ## Landing-page globe (v24)
 
-The rotating Earth (day and night, city lights, clouds, routes between crypto and fiat hubs) is `components/GlobeHero.vue`. It is used only in `pages/index.vue`, so it never loads inside the wallet. The map data (`utils/globeData.ts`, from Natural Earth, public domain) downloads separately, only on the landing page. The routes are illustrative, not live payment data. It pauses when off screen or when the tab is hidden, and holds still for people who prefer reduced motion.
+The rotating dot-matrix globe (lit sun side, dim night side, routes between crypto and fiat hubs) is `components/GlobeHero.vue`. It is used only in `pages/index.vue`, so it never loads inside the wallet. The map data (`utils/globeData.ts`, from Natural Earth, public domain) downloads separately, only on the landing page. The routes are illustrative, not live payment data. It pauses when off screen or when the tab is hidden, and holds still for people who prefer reduced motion.
 
 ## Landing-page light and dark mode (v26)
 

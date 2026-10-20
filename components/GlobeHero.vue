@@ -3,30 +3,26 @@
     ref="box"
     class="mo-globe"
     role="img"
-    aria-label="A rotating Earth, half in daylight and half in night. Glowing routes link crypto hubs and fiat banking hubs around the world."
+    aria-label="A rotating dotted globe. Glowing arcs link crypto hubs and fiat banking hubs around the world, with the sun lighting one side and night on the other."
   >
     <canvas ref="cv" class="mo-globe-canvas" aria-hidden="true"></canvas>
   </div>
 </template>
 
 <script setup lang="ts">
-// A rotating Earth drawn on a canvas: day side, night side with city lights,
-// clouds, and glowing routes between crypto hubs (cool blue) and fiat hubs
-// (warm orange). No 3D library: the sphere is shaded pixel by pixel. The routes
-// are illustrative, they are not live payment data.
+// A rotating dot-matrix globe drawn on a canvas: land is a field of small
+// dots, lit on the sun side and dim on the night side, with glowing arcs that
+// travel between crypto hubs (cool blue) and fiat hubs (warm orange). No 3D
+// library. The routes are illustrative, they are not live payment data.
 // Only the landing page uses this component.
 
 const box = ref<HTMLElement | null>(null)
 const cv = ref<HTMLCanvasElement | null>(null)
 
-const TW = 2048
-const TH = 1024
-const CW = 1024
-const CH = 512
-const TMASK = TW - 1
-const CMASK = CW - 1
-const TILT = (18 * Math.PI) / 180
-const SPIN_SPEED = (2 * Math.PI) / 80000 // one turn every 80 seconds
+const TILT = (20 * Math.PI) / 180
+const SPIN_SPEED = (2 * Math.PI) / 70000 // one turn every 70 seconds
+const DOT_STEP = 1.5 // degrees between dots
+
 // Cool blue for crypto nodes, warm orange for fiat nodes. Each mode has its own
 // strength so the routes stay clear on a dark sky and on a light page.
 const PALETTE = {
@@ -102,50 +98,6 @@ function rng(seed: number) {
   }
 }
 
-function hash2(ix: number, iy: number, seed: number) {
-  let h = (Math.imul(ix, 374761393) + Math.imul(iy, 668265263) + seed) | 0
-  h = Math.imul(h ^ (h >>> 13), 1274126177)
-  return ((h ^ (h >>> 16)) >>> 0) / 4294967296
-}
-
-// Value noise that repeats every `px` cells sideways, so the map has no seam.
-function vnoise(x: number, y: number, px: number, seed: number) {
-  const x0 = Math.floor(x)
-  const y0 = Math.floor(y)
-  const fx = x - x0
-  const fy = y - y0
-  const sx = fx * fx * (3 - 2 * fx)
-  const sy = fy * fy * (3 - 2 * fy)
-  const xa = ((x0 % px) + px) % px
-  const xb = (xa + 1) % px
-  const a = hash2(xa, y0, seed)
-  const b = hash2(xb, y0, seed)
-  const c = hash2(xa, y0 + 1, seed)
-  const d = hash2(xb, y0 + 1, seed)
-  return a + (b - a) * sx + (c - a) * sy + (a - b - c + d) * sx * sy
-}
-
-function fbm(
-  u: number,
-  v: number,
-  baseX: number,
-  baseY: number,
-  octaves: number,
-  seed: number,
-) {
-  let amp = 0.5
-  let sum = 0
-  let norm = 0
-  let px = baseX
-  for (let o = 0; o < octaves; o++) {
-    sum += amp * vnoise(u * px, v * baseY * (px / baseX), px, seed + o * 101)
-    norm += amp
-    amp *= 0.5
-    px *= 2
-  }
-  return sum / norm
-}
-
 function smooth(a: number, b: number, x: number) {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)))
   return t * t * (3 - 2 * t)
@@ -155,190 +107,50 @@ function mix(a: number, b: number, t: number) {
   return a + (b - a) * t
 }
 
-const pause = () => new Promise<void>((resolve) => setTimeout(resolve, 0))
-
-// ---------- textures (built once) ----------
-
-interface Textures {
-  day: Uint32Array
-  night: Uint8Array
-  cloud: Uint8Array
-}
-
-function tracePath(
-  ctx: CanvasRenderingContext2D,
-  rings: number[][],
-  w: number,
-  h: number,
-) {
-  ctx.beginPath()
+// The dots: a grid of points over the whole sphere, kept where there is land.
+function buildDots(rings: number[][]): Float32Array {
+  const MW = 1440
+  const MH = 720
+  const mask = document.createElement('canvas')
+  mask.width = MW
+  mask.height = MH
+  const mctx = mask.getContext('2d')!
+  mctx.fillStyle = '#fff'
+  mctx.beginPath()
   for (const r of rings) {
     for (let i = 0; i < r.length; i += 2) {
-      const x = ((r[i] / 20 + 180) / 360) * w
-      const y = ((90 - r[i + 1] / 20) / 180) * h
+      const x = ((r[i] / 20 + 180) / 360) * MW
+      const y = ((90 - r[i + 1] / 20) / 180) * MH
       if (i === 0) {
-        ctx.moveTo(x, y)
+        mctx.moveTo(x, y)
       } else {
-        ctx.lineTo(x, y)
+        mctx.lineTo(x, y)
       }
     }
-    ctx.closePath()
+    mctx.closePath()
   }
-}
+  mctx.fill()
+  const alpha = mctx.getImageData(0, 0, MW, MH).data
 
-async function buildTextures(
-  rings: number[][],
-  cities: number[][],
-): Promise<Textures> {
-  const mk = () => {
-    const c = document.createElement('canvas')
-    c.width = TW
-    c.height = TH
-    return c
-  }
-
-  // Land mask and a soft shallow-water ring around the coasts.
-  const landCanvas = mk()
-  const lctx = landCanvas.getContext('2d')!
-  lctx.fillStyle = '#fff'
-  tracePath(lctx, rings, TW, TH)
-  lctx.fill()
-  const landA = lctx.getImageData(0, 0, TW, TH).data
-
-  const shelfCanvas = mk()
-  const sctx = shelfCanvas.getContext('2d')!
-  sctx.lineJoin = 'round'
-  sctx.strokeStyle = 'rgba(255,255,255,0.3)'
-  tracePath(sctx, rings, TW, TH)
-  for (const width of [22, 13, 6]) {
-    sctx.lineWidth = width
-    sctx.stroke()
-  }
-  const shelfA = sctx.getImageData(0, 0, TW, TH).data
-  await pause()
-
-  // Noise for land colour variety and for clouds.
-  const biome = new Float32Array(CW * CH)
-  const cloud = new Uint8Array(CW * CH)
-  for (let y = 0; y < CH; y++) {
-    const v = (y + 0.5) / CH
-    const alat = Math.abs(90 - v * 180)
-    const band = 1 - 0.55 * Math.exp(-(((alat - 25) / 9) ** 2))
-    for (let x = 0; x < CW; x++) {
-      const u = (x + 0.5) / CW
-      biome[y * CW + x] = fbm(u, v, 8, 4, 4, 11)
-      const f = fbm(u, v, 6, 3, 5, 77)
-      cloud[y * CW + x] = Math.round(smooth(0.55, 0.74, f) * band * 255)
-    }
-  }
-  await pause()
-
-  // Daytime colours.
-  const day = new Uint32Array(TW * TH)
-  for (let y = 0; y < TH; y++) {
-    const lat = 90 - ((y + 0.5) / TH) * 180
-    const alat = Math.abs(lat)
-    const dry = Math.exp(-(((alat - 26) / 9) ** 2))
-    for (let x = 0; x < TW; x++) {
-      const i = y * TW + x
-      const n = biome[(y >> 1) * CW + (x >> 1)]
-      const land = landA[i * 4 + 3] / 255
-      const shelf = Math.min(1, shelfA[i * 4 + 3] / 150)
-
-      // Ocean: deep blue, lighter near coasts, pale near the poles.
-      let or = mix(8, 14, n)
-      let og = mix(52, 82, n)
-      let ob = mix(114, 156, n)
-      or = mix(or, 48, shelf * shelf)
-      og = mix(og, 152, shelf * shelf)
-      ob = mix(ob, 192, shelf * shelf)
-      const ice = smooth(74, 84, alat)
-      or = mix(or, 205, ice * 0.75)
-      og = mix(og, 224, ice * 0.75)
-      ob = mix(ob, 236, ice * 0.75)
-
-      let r = or
-      let g = og
-      let b = ob
-      if (land > 0.01) {
-        // Land: green where it is wet, sandy in the dry belts, white near the poles.
-        const dryness = Math.min(1, Math.max(0, dry * 1.3 + (n - 0.5) * 1.1))
-        let gr: number
-        let gg: number
-        let gb: number
-        if (alat < 14) {
-          gr = 30
-          gg = 94
-          gb = 42
-        } else if (alat < 42) {
-          const t = (alat - 14) / 28
-          gr = mix(30, 70, t)
-          gg = mix(94, 116, t)
-          gb = mix(42, 52, t)
-        } else if (alat < 60) {
-          const t = (alat - 42) / 18
-          gr = mix(70, 44, t)
-          gg = mix(116, 82, t)
-          gb = mix(52, 60, t)
-        } else {
-          const t = Math.min(1, (alat - 60) / 12)
-          gr = mix(44, 124, t)
-          gg = mix(82, 122, t)
-          gb = mix(60, 102, t)
-        }
-        const lr = mix(gr, 196, dryness * 0.9)
-        const lg = mix(gg, 164, dryness * 0.9)
-        const lb = mix(gb, 102, dryness * 0.9)
-        const relief = 0.8 + 0.4 * n
-        const snow = smooth(62, 76, alat)
-        r = mix(lr * relief, 238, snow)
-        g = mix(lg * relief, 243, snow)
-        b = mix(lb * relief, 248, snow)
-        r = mix(or, r, land)
-        g = mix(og, g, land)
-        b = mix(ob, b, land)
+  const out: number[] = []
+  let row = 0
+  for (let lat = -88; lat <= 88; lat += DOT_STEP) {
+    const la = (lat * Math.PI) / 180
+    const count = Math.max(1, Math.round((360 * Math.cos(la)) / DOT_STEP))
+    // Every other row is shifted half a step so the dots pack like a honeycomb.
+    const shift = row % 2 === 0 ? 0 : 0.5
+    for (let k = 0; k < count; k++) {
+      const lon = -180 + ((k + shift) / count) * 360
+      const px = Math.min(MW - 1, Math.max(0, Math.floor(((lon + 180) / 360) * MW)))
+      const py = Math.min(MH - 1, Math.max(0, Math.floor(((90 - lat) / 180) * MH)))
+      if (alpha[(py * MW + px) * 4 + 3] > 110) {
+        const lo = (lon * Math.PI) / 180
+        out.push(Math.cos(la) * Math.sin(lo), Math.sin(la), Math.cos(la) * Math.cos(lo))
       }
-      day[i] =
-        ((land < 0.5 ? 254 : 255) << 24) |
-        (Math.round(b) << 16) |
-        (Math.round(g) << 8) |
-        Math.round(r)
     }
-    if (y % 128 === 127) {
-      await pause()
-    }
+    row++
   }
-
-  // City lights for the night side.
-  const nightCanvas = mk()
-  const nctx = nightCanvas.getContext('2d')!
-  nctx.globalCompositeOperation = 'lighter'
-  const rand = rng(5)
-  for (const c of cities) {
-    const x = ((c[0] / 20 + 180) / 360) * TW
-    const y = ((90 - c[1] / 20) / 180) * TH
-    const base = Math.max(0, c[2] / 10 - 5.3)
-    const rad = 0.8 + base * 0.7
-    const grad = nctx.createRadialGradient(x, y, 0, x, y, rad * 2.2)
-    grad.addColorStop(0, `rgba(255,255,255,${0.4 + base * 0.1})`)
-    grad.addColorStop(1, 'rgba(255,255,255,0)')
-    nctx.fillStyle = grad
-    nctx.fillRect(x - rad * 2.2, y - rad * 2.2, rad * 4.4, rad * 4.4)
-    const sprawl = Math.round(base * 4)
-    for (let k = 0; k < sprawl; k++) {
-      const a = rand() * 6.283
-      const d = (rand() + rand()) * rad * 2.4
-      nctx.fillStyle = 'rgba(255,255,255,0.3)'
-      nctx.fillRect(x + Math.cos(a) * d, y + Math.sin(a) * d * 0.8, 0.9, 0.9)
-    }
-  }
-  const nd = nctx.getImageData(0, 0, TW, TH).data
-  const night = new Uint8Array(TW * TH)
-  for (let i = 0; i < TW * TH; i++) {
-    night[i] = landA[i * 4 + 3] > 130 ? nd[i * 4] : 0
-  }
-
-  return { day, night, cloud }
+  return Float32Array.from(out)
 }
 
 // ---------- the component ----------
@@ -364,10 +176,10 @@ onMounted(() => {
   const st = Math.sin(TILT)
 
   // The sun stays in one place in the view, so the Earth turns through it.
-  const sl = Math.hypot(-0.78, 0.22, 0.3)
-  const sunX = -0.78 / sl
-  const sunY = 0.22 / sl
-  const sunZ = 0.3 / sl
+  const sl = Math.hypot(-0.72, 0.3, 0.42)
+  const sunX = -0.72 / sl
+  const sunY = 0.3 / sl
+  const sunZ = 0.42 / sl
 
   let W = 0
   let H = 0
@@ -376,28 +188,9 @@ onMounted(() => {
   let cy = 0
   let R = 0
 
-  // Per-pixel values that never change while the Earth spins.
-  let M = 0
-  let baseU = new Float32Array(0)
-  let baseUc = new Float32Array(0)
-  let rowOff = new Int32Array(0)
-  let cRow = new Int32Array(0)
-  let dayf = new Float32Array(0)
-  let shade = new Float32Array(0)
-  let spec = new Float32Array(0)
-  let rim = new Float32Array(0)
-  let twi = new Float32Array(0)
-  let pixIndex = new Int32Array(0)
-  let edge = new Uint8Array(0)
-  let D = 0
-  let discCanvas: HTMLCanvasElement | null = null
-  let discCtx: CanvasRenderingContext2D | null = null
-  let discImage: ImageData | null = null
-  let disc32: Uint32Array | null = null
-
-  let tex: Textures | null = null
   // The page decides the mode. The globe follows it so both share one background.
   let isDark = document.documentElement.dataset.moTheme !== 'light'
+  let dots = new Float32Array(0)
   let stars: Array<{ x: number; y: number; r: number; a: number; p: number }> = []
 
   const nodeByName = new Map<string, GlobeNode>()
@@ -429,16 +222,14 @@ onMounted(() => {
       cb.push(Math.sin(t * w) / sinw)
       alt.push(peak * Math.sin(Math.PI * t))
     }
-    const k1 = nodeByName.get(from)!.kind
-    const k2 = nodeByName.get(to)!.kind
     return {
       a,
       b,
       ca,
       cb,
       alt,
-      k1,
-      k2,
+      k1: nodeByName.get(from)!.kind,
+      k2: nodeByName.get(to)!.kind,
       period: 5200 + ((i * 937) % 2600),
       offset: (i * 0.37) % 1,
     }
@@ -482,82 +273,6 @@ onMounted(() => {
     cy = H * 0.48
     R = Math.min(W, H * 0.96) * 0.35
 
-    // The Earth itself is shaded at a lower resolution than the canvas.
-    const q = Math.min(dpr, 1.25)
-    D = Math.max(80, Math.round((2 * R * q) / dpr))
-    const half = D / 2
-    const idx: number[] = []
-    const bu: number[] = []
-    const bc: number[] = []
-    const ro: number[] = []
-    const cr: number[] = []
-    const df: number[] = []
-    const sh: number[] = []
-    const sp: number[] = []
-    const rm: number[] = []
-    const tw: number[] = []
-    const ed: number[] = []
-
-    // Half way between the sun and the viewer, for the sun glint on the sea.
-    const hx = sunX
-    const hy = sunY
-    const hz = sunZ + 1
-    const hl = Math.hypot(hx, hy, hz)
-
-    for (let py = 0; py < D; py++) {
-      for (let px = 0; px < D; px++) {
-        const nx = (px + 0.5 - half) / half
-        const ny = -(py + 0.5 - half) / half
-        const r2 = nx * nx + ny * ny
-        if (r2 > 1) {
-          continue
-        }
-        const nz = Math.sqrt(1 - r2)
-        const rr = Math.sqrt(r2)
-        // Into the Earth's own frame (north pole tilted towards the viewer).
-        const gy = ny * ct + nz * st
-        const gz = -ny * st + nz * ct
-        const lat = Math.asin(Math.max(-1, Math.min(1, gy)))
-        const lonBase = Math.atan2(nx, gz)
-        const u = (lonBase / (2 * Math.PI) + 0.5) * TW
-        const v = Math.min(TH - 1, Math.max(0, Math.floor((0.5 - lat / Math.PI) * TH)))
-
-        const L = nx * sunX + ny * sunY + nz * sunZ
-        idx.push(py * D + px)
-        bu.push(u)
-        bc.push(u * (CW / TW))
-        ro.push(v * TW)
-        cr.push((v >> 1) * CW)
-        const dayFactor = smooth(-0.1, 0.22, L)
-        df.push(dayFactor)
-        sh.push((0.14 + 0.86 * Math.pow(Math.max(L, 0), 0.55)) * (0.72 + 0.28 * nz))
-        sp.push(Math.pow(Math.max((nx * hx + ny * hy + nz * hz) / hl, 0), 150))
-        const lightBias = Math.min(1, Math.max(0, L * 1.3 + 0.45))
-        rm.push(Math.pow(1 - nz, 2.8) * (0.2 + 0.8 * lightBias))
-        tw.push(Math.exp(-(((L - 0.02) / 0.1) ** 2)))
-        ed.push(Math.round(Math.min(1, Math.max(0, (1 - rr) * half * 0.9)) * 255))
-      }
-    }
-    M = idx.length
-    pixIndex = Int32Array.from(idx)
-    baseU = Float32Array.from(bu)
-    baseUc = Float32Array.from(bc)
-    rowOff = Int32Array.from(ro)
-    cRow = Int32Array.from(cr)
-    dayf = Float32Array.from(df)
-    shade = Float32Array.from(sh)
-    spec = Float32Array.from(sp)
-    rim = Float32Array.from(rm)
-    twi = Float32Array.from(tw)
-    edge = Uint8Array.from(ed)
-
-    discCanvas = document.createElement('canvas')
-    discCanvas.width = D
-    discCanvas.height = D
-    discCtx = discCanvas.getContext('2d')
-    discImage = discCtx ? discCtx.createImageData(D, D) : null
-    disc32 = discImage ? new Uint32Array(discImage.data.buffer) : null
-
     const rand = rng(99)
     stars = []
     for (let i = 0; i < 90; i++) {
@@ -571,67 +286,6 @@ onMounted(() => {
     }
   }
 
-  function shadeEarth(spin: number) {
-    if (!tex || !disc32) {
-      return
-    }
-    const { day, night, cloud } = tex
-    const spinTex = (spin / (2 * Math.PI)) * TW
-    const spinCloud = ((spin * 0.94) / (2 * Math.PI)) * CW
-    const out = disc32
-    for (let j = 0; j < M; j++) {
-      const ti = rowOff[j] + (((baseU[j] + spinTex) | 0) & TMASK)
-      const ci = cRow[j] + (((baseUc[j] + spinCloud) | 0) & CMASK)
-      const dc = day[ti]
-      let r = dc & 255
-      let g = (dc >>> 8) & 255
-      let b = (dc >>> 16) & 255
-      const ocean = dc >>> 24 === 254
-      const cl = cloud[ci] * 0.00392157
-      const ca = cl * 0.78
-      r += (244 - r) * ca
-      g += (246 - g) * ca
-      b += (250 - b) * ca
-
-      const sh = shade[j]
-      const df = dayf[j]
-      const nr = r * 0.045 + 3
-      const ng = g * 0.06 + 7
-      const nb = b * 0.12 + 20
-      let R2 = nr + (r * sh - nr) * df
-      let G2 = ng + (g * sh - ng) * df
-      let B2 = nb + (b * sh - nb) * df
-
-      const nl = night[ti]
-      if (nl > 0) {
-        const k = nl * 0.00392157 * (1 - df) * (1 - df) * (1 - cl * 0.75)
-        R2 += 255 * k * 0.9
-        G2 += 184 * k * 0.9
-        B2 += 96 * k * 0.9
-      }
-      const t = twi[j]
-      R2 += 40 * t
-      G2 += 18 * t
-      B2 += 8 * t
-      if (ocean) {
-        const s = spec[j] * df * (1 - cl) * 110
-        R2 += s
-        G2 += s * 0.95
-        B2 += s * 0.85
-      }
-      const rm = rim[j]
-      R2 += 60 * rm
-      G2 += 120 * rm
-      B2 += 255 * rm
-
-      const rr = R2 > 255 ? 255 : R2 | 0
-      const gg = G2 > 255 ? 255 : G2 | 0
-      const bb = B2 > 255 ? 255 : B2 | 0
-      out[pixIndex[j]] = (edge[j] << 24) | (bb << 16) | (gg << 8) | rr
-    }
-    discCtx!.putImageData(discImage!, 0, 0)
-  }
-
   function rgba(c: number[], a: number) {
     return `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`
   }
@@ -640,13 +294,103 @@ onMounted(() => {
     return [mix(c1[0], c2[0], t), mix(c1[1], c2[1], t), mix(c1[2], c2[2], t)]
   }
 
+  // Land dots, brighter on the sunny side and dim on the night side.
+  const LEVELS = 10
+  function drawDots(g: CanvasRenderingContext2D, spin: number) {
+    const sc = Math.cos(spin)
+    const ss = Math.sin(spin)
+    const baseR = Math.max(0.7 * dpr, R * 0.0046)
+    const day = isDark ? [190, 220, 255] : [24, 64, 210]
+    const night = isDark ? [110, 150, 250] : [90, 120, 200]
+    const buckets: number[][] = []
+    for (let i = 0; i < LEVELS; i++) {
+      buckets.push([])
+    }
+    for (let i = 0; i < dots.length; i += 3) {
+      const x = dots[i]
+      const y = dots[i + 1]
+      const z = dots[i + 2]
+      const gx = x * sc - z * ss
+      const gz = z * sc + x * ss
+      const ny = y * ct - gz * st
+      const nz = y * st + gz * ct
+      if (nz <= 0.03) {
+        continue
+      }
+      const L = gx * sunX + ny * sunY + nz * sunZ
+      const lit = smooth(-0.15, 0.35, L)
+      const edge = smooth(0.03, 0.3, nz)
+      const a = (0.34 + 0.66 * lit) * edge
+      const level = Math.min(LEVELS - 1, Math.floor(a * LEVELS))
+      const size = baseR * (0.55 + 0.45 * nz)
+      buckets[level].push(cx + R * gx, cy - R * ny, size, lit)
+    }
+    for (let lv = 0; lv < LEVELS; lv++) {
+      const list = buckets[lv]
+      if (list.length === 0) {
+        continue
+      }
+      // One colour per level: mostly the sunny colour, shifted toward the night
+      // colour for the dim levels.
+      const f = (lv + 0.5) / LEVELS
+      const col = blend(night, day, smooth(0.15, 0.85, f))
+      g.fillStyle = rgba(col, Math.min(1, 0.26 + f * 0.85))
+      g.beginPath()
+      for (let j = 0; j < list.length; j += 4) {
+        g.moveTo(list[j] + list[j + 2], list[j + 1])
+        g.arc(list[j], list[j + 1], list[j + 2], 0, Math.PI * 2)
+      }
+      g.fill()
+    }
+  }
+
+  function drawSphere(g: CanvasRenderingContext2D) {
+    // The ocean: a smooth glassy ball lit from the sun side.
+    const hx = cx + sunX * R * 0.42
+    const hy = cy - sunY * R * 0.42
+    const body = g.createRadialGradient(hx, hy, R * 0.05, cx, cy, R * 1.02)
+    if (isDark) {
+      body.addColorStop(0, '#1d44b8')
+      body.addColorStop(0.5, '#0c1f66')
+      body.addColorStop(1, '#050b2a')
+    } else {
+      body.addColorStop(0, '#ffffff')
+      body.addColorStop(0.55, '#e4ecff')
+      body.addColorStop(1, '#a9bef5')
+    }
+    g.fillStyle = body
+    g.beginPath()
+    g.arc(cx, cy, R, 0, Math.PI * 2)
+    g.fill()
+
+    // Night side: a soft shadow sweeping across from the far edge.
+    g.save()
+    g.beginPath()
+    g.arc(cx, cy, R, 0, Math.PI * 2)
+    g.clip()
+    const sx = cx - sunX * R
+    const sy = cy + sunY * R
+    const shadow = g.createLinearGradient(sx, sy, cx + sunX * R, cy - sunY * R)
+    if (isDark) {
+      shadow.addColorStop(0, 'rgba(2,5,22,0.78)')
+      shadow.addColorStop(0.5, 'rgba(2,5,22,0.28)')
+      shadow.addColorStop(1, 'rgba(2,5,22,0)')
+    } else {
+      shadow.addColorStop(0, 'rgba(24,44,120,0.5)')
+      shadow.addColorStop(0.5, 'rgba(24,44,120,0.16)')
+      shadow.addColorStop(1, 'rgba(24,44,120,0)')
+    }
+    g.fillStyle = shadow
+    g.fillRect(cx - R, cy - R, R * 2, R * 2)
+    g.restore()
+  }
+
   function render(now: number, spin: number, animated: boolean) {
     if (W === 0) {
       return
     }
     const g = ctx!
     g.clearRect(0, 0, W, H)
-
     const pal = isDark ? PALETTE.dark : PALETTE.light
 
     // Stars (dark mode only).
@@ -656,7 +400,7 @@ onMounted(() => {
       g.fillRect(s.x, s.y, s.r, s.r)
     }
 
-    // Soft glow of the atmosphere around the planet.
+    // Soft glow of the atmosphere around the globe.
     const glow = g.createRadialGradient(cx, cy, R * 0.94, cx, cy, R * 1.3)
     if (isDark) {
       glow.addColorStop(0, 'rgba(90,150,255,0.5)')
@@ -672,16 +416,24 @@ onMounted(() => {
     g.arc(cx, cy, R * 1.3, 0, Math.PI * 2)
     g.fill()
 
-    if (discCanvas && tex) {
-      shadeEarth(spin)
-      g.imageSmoothingEnabled = true
-      g.drawImage(discCanvas, cx - R, cy - R, R * 2, R * 2)
-    } else {
-      g.fillStyle = '#0b1c4a'
-      g.beginPath()
-      g.arc(cx, cy, R, 0, Math.PI * 2)
-      g.fill()
-    }
+    drawSphere(g)
+    drawDots(g, spin)
+
+    // A thin bright rim on the sunny edge.
+    const rim = g.createLinearGradient(
+      cx + sunX * R,
+      cy - sunY * R,
+      cx - sunX * R,
+      cy + sunY * R,
+    )
+    rim.addColorStop(0, isDark ? 'rgba(150,190,255,0.75)' : 'rgba(60,100,240,0.55)')
+    rim.addColorStop(0.6, isDark ? 'rgba(110,150,255,0.12)' : 'rgba(60,100,240,0.1)')
+    rim.addColorStop(1, 'rgba(110,150,255,0)')
+    g.strokeStyle = rim
+    g.lineWidth = 1.4 * dpr
+    g.beginPath()
+    g.arc(cx, cy, R, 0, Math.PI * 2)
+    g.stroke()
 
     const sc = Math.cos(spin)
     const ss = Math.sin(spin)
@@ -731,7 +483,8 @@ onMounted(() => {
         const f = (t - (head - tail)) / tail
         const col = blend(c1, c2, t)
         g.lineWidth = 3.6 * dpr
-        g.strokeStyle = (isDark ? 'rgba(4,10,34,' : 'rgba(255,255,255,') + (0.35 * f).toFixed(3) + ')'
+        g.strokeStyle =
+          (isDark ? 'rgba(4,10,34,' : 'rgba(255,255,255,') + (0.35 * f).toFixed(3) + ')'
         g.beginPath()
         g.moveTo(sx[k], sy[k])
         g.lineTo(sx[k + 1], sy[k + 1])
@@ -759,7 +512,7 @@ onMounted(() => {
       }
     }
 
-    // Nodes.
+    // Nodes, each with a ripple that spreads out and fades.
     for (let i = 0; i < GLOBE_NODES.length; i++) {
       const n = GLOBE_NODES[i]
       const v = nodeVec[i]
@@ -772,7 +525,7 @@ onMounted(() => {
         continue
       }
       const col = n.kind === 'crypto' ? pal.crypto : pal.fiat
-      const ph = animated ? ((now / 2200 + i * 0.19) % 1) : 0.2
+      const ph = animated ? (now / 2200 + i * 0.19) % 1 : 0.2
       g.strokeStyle = rgba(col, (1 - ph) * 0.6 * fade)
       g.lineWidth = 1.2 * dpr
       g.beginPath()
@@ -836,12 +589,12 @@ onMounted(() => {
   layout()
   render(performance.now(), spinStart, false)
 
-  // The map data is a separate download, so it does not slow the first paint.
-  import('~/utils/globeData').then(async (data) => {
+  // The map outline is a separate download, so it does not slow the first paint.
+  import('~/utils/globeData').then((data) => {
     if (disposed) {
       return
     }
-    tex = await buildTextures(data.LAND_RINGS, data.CITIES)
+    dots = buildDots(data.LAND_RINGS)
     startTime = performance.now()
     render(performance.now(), spinAt(performance.now()), false)
     sync()
