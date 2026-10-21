@@ -180,7 +180,8 @@
           </div>
 
           <div class="mo-wallet-actions">
-            <v-btn to="/send" color="primary" variant="flat">Send</v-btn>
+            <v-btn to="/buy" color="primary" variant="flat">Buy</v-btn>
+            <v-btn to="/send" color="primary" variant="tonal">Send</v-btn>
             <v-btn to="/receive" color="secondary" variant="outlined">
               Receive
             </v-btn>

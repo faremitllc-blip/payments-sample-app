@@ -91,6 +91,7 @@ if (import.meta.client) {
 const mainItems = [
   { to: '/wallet', label: 'Home', icon: 'mdi-home-variant-outline' },
   { to: '/assistant', label: 'Assistant', icon: 'mdi-shimmer' },
+  { to: '/buy', label: 'Buy USDC', icon: 'mdi-credit-card-plus-outline' },
   { to: '/send', label: 'Send', icon: 'mdi-arrow-top-right' },
   { to: '/receive', label: 'Receive', icon: 'mdi-arrow-bottom-left' },
   { to: '/bank', label: 'Bank', icon: 'mdi-bank-outline' },
@@ -106,6 +107,7 @@ const accountItems = [
 const titles: Record<string, string> = {
   '/wallet': 'Dashboard',
   '/assistant': 'Assistant',
+  '/buy': 'Buy USDC',
   '/send': 'Send',
   '/receive': 'Receive',
   '/bank': 'Bank accounts',

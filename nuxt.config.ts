@@ -94,6 +94,13 @@ export default defineNuxtConfig({
     geminiApiKey: process.env.GEMINI_API_KEY || '',
     geminiModel: process.env.GEMINI_MODEL || '',
 
+    // Buy USDC with fiat (Arc App Kit on-ramp). Server only.
+    // The key comes from console.circle.com -> API keys (sandbox and production
+    // keys are different).
+    onrampApiKey: process.env.ONRAMP_API_KEY || '',
+    onrampEnv: process.env.ONRAMP_ENV || 'sandbox',
+    onrampReferrerDomain: process.env.ONRAMP_REFERRER_DOMAIN || '',
+
     // Supabase service role key (server only)
     supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
 
