@@ -1,4 +1,14 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+import { existsSync } from 'node:fs'
+import { join, resolve } from 'node:path'
+
+// "Buy USDC" needs the @circle-fin/app-kit package. If it has not been added to
+// package.json yet, point it at a small stand-in so the site still builds.
+const appKitInstalled = existsSync(
+  join(process.cwd(), 'node_modules', '@circle-fin', 'app-kit', 'package.json'),
+)
+const appKitStub = resolve(process.cwd(), 'stubs/app-kit-missing.ts')
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-08-27',
   devtools: { enabled: true },
@@ -70,6 +80,13 @@ export default defineNuxtConfig({
     '!plugins/vuetify.client.ts',
   ],
 
+  alias: appKitInstalled
+    ? {}
+    : {
+        '@circle-fin/app-kit/server': appKitStub,
+        '@circle-fin/app-kit': appKitStub,
+      },
+
   runtimeConfig: {
     // The private keys which are only available within server-side
     // Keys within public, will be also exposed to the client-side
@@ -98,6 +115,7 @@ export default defineNuxtConfig({
     // The key comes from console.circle.com -> API keys (sandbox and production
     // keys are different).
     onrampApiKey: process.env.ONRAMP_API_KEY || '',
+    onrampSdkInstalled: appKitInstalled ? 'true' : '',
     onrampEnv: process.env.ONRAMP_ENV || 'sandbox',
     onrampReferrerDomain: process.env.ONRAMP_REFERRER_DOMAIN || '',
 

@@ -212,7 +212,7 @@ The Bank page shows the last known details straight away (kept per email on this
 
 New page `/buy` ("Buy USDC" in the menu and on the wallet card). It uses the Arc App Kit on-ramp (docs.arc.io/app-kit/onramp).
 
-1. **Add the package.** In GitHub, open `package.json` and add `"@circle-fin/app-kit": "latest"` under `dependencies` (mind the commas). Do this before uploading, or the build will fail with "Failed to resolve import @circle-fin/app-kit". The docs ask for Node 22 or newer (Vercel -> Settings -> General -> Node.js Version).
+1. **Add the package.** In GitHub, open `package.json` and add `"@circle-fin/app-kit": "latest"` under `dependencies` (mind the commas). Until you do, the site still builds and works, and Buy USDC simply stays switched off. The docs ask for Node 22 or newer (Vercel -> Settings -> General -> Node.js Version).
 2. **Add Vercel variables:** `ONRAMP_API_KEY`, `ONRAMP_ENV` (sandbox or production), `ONRAMP_REFERRER_DOMAIN` (production card payments). Card, Apple Pay and Google Pay in production also need business verification (KYB) in the Circle Console (console.circle.com/app-kits).
 3. **Use Arc wallets.** The on-ramp only pays out USDC on Arc. Buying is blocked unless the user's wallet is on Arc, so money can never land on the wrong network. Set `CIRCLE_BLOCKCHAIN=ARC-TESTNET` (testing) or `ARC` (live) for NEW wallets. Existing wallets on another network cannot buy. Delete their rows in the Supabase `wallets` table while testing, then create them again.
 4. The browser event can be missed if the tab is closed, so a webhook handler is the reliable way to confirm purchases. It is not built yet.

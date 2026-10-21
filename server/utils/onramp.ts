@@ -27,7 +27,8 @@ export function onrampSettings(): OnrampSettings {
     .replace(/^https?:\/\//i, '')
     .replace(/[:/].*$/, '')
   return {
-    configured: apiKey.length > 0,
+    // Needs the key and the App Kit package.
+    configured: apiKey.length > 0 && isSwitchOn(config.onrampSdkInstalled),
     sandbox,
     apiKey,
     referrerDomain,
