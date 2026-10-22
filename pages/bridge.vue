@@ -31,10 +31,28 @@
             <span v-if="n.address">{{ short(n.address) }}</span>
             <span v-else>No wallet on this network yet</span>
           </div>
-          <div>
-            <span v-if="n.address">
-              {{ n.balance === null ? '—' : n.balance.toFixed(2) }} USDC
-            </span>
+          <div class="mo-bridge-actions">
+            <template v-if="n.address">
+              <span class="mo-bridge-bal">
+                {{ n.balance === null ? '—' : n.balance.toFixed(2) }} USDC
+              </span>
+              <v-btn
+                size="small"
+                :variant="from === n.id ? 'flat' : 'outlined'"
+                :color="from === n.id ? 'primary' : undefined"
+                @click="pickFrom(n.id)"
+              >
+                From
+              </v-btn>
+              <v-btn
+                size="small"
+                :variant="to === n.id ? 'flat' : 'outlined'"
+                :color="to === n.id ? 'secondary' : undefined"
+                @click="pickTo(n.id)"
+              >
+                To
+              </v-btn>
+            </template>
             <v-btn
               v-else
               size="small"
@@ -48,23 +66,18 @@
         </div>
       </div>
 
+      <p class="mo-bridge-summary">
+        <template v-if="from && to && from !== to">
+          Bridging from <strong>{{ label(from) }}</strong> to
+          <strong>{{ label(to) }}</strong>
+        </template>
+        <template v-else>
+          Press <strong>From</strong> on the wallet that holds the USDC, then
+          <strong>To</strong> on the wallet that should receive it.
+        </template>
+      </p>
+
       <div class="fm-form">
-        <v-select
-          v-model="from"
-          :items="walletOptions"
-          item-title="label"
-          item-value="id"
-          label="From"
-          variant="outlined"
-        />
-        <v-select
-          v-model="to"
-          :items="walletOptions"
-          item-title="label"
-          item-value="id"
-          label="To"
-          variant="outlined"
-        />
         <v-text-field
           v-model="amount"
           label="Amount (USDC)"
@@ -89,7 +102,7 @@
         </v-btn>
       </div>
 
-      <h2 class="fm-page-title mt-8">Recent bridges</h2>
+      <h2 class="mo-bridge-h2">Recent bridges</h2>
       <p v-if="!history.length" class="fm-balance-label">Nothing yet.</p>
       <div v-else class="fm-list">
         <div v-for="t in history" :key="t.id" class="fm-list-item">
@@ -117,6 +130,7 @@
         </div>
       </div>
     </template>
+    <p class="mo-bridge-version">Bridge page v36</p>
   </div>
 </template>
 
@@ -174,6 +188,14 @@ const canStart = computed(
     !history.value.some((t) => t.status === 'running'),
 )
 
+function pickFrom(id: string) {
+  from.value = id
+  if (to.value === id) to.value = ''
+}
+function pickTo(id: string) {
+  to.value = id
+  if (from.value === id) from.value = ''
+}
 function short(a: string) {
   return `${a.slice(0, 8)}…${a.slice(-6)}`
 }
@@ -198,7 +220,7 @@ async function loadNetworks() {
   data.value = await api('/api/crosschain/networks')
 }
 
-function watch() {
+function pollHistory() {
   if (timer) return
   timer = setInterval(async () => {
     try {
@@ -242,7 +264,7 @@ async function start() {
     })
     amount.value = ''
     await loadHistory()
-    watch()
+    pollHistory()
   } catch (err: any) {
     error.value = errorText(err)
   } finally {
@@ -255,19 +277,31 @@ async function retry(id: string) {
   try {
     await api('/api/crosschain/retry', { method: 'POST', body: { id } })
     await loadHistory()
-    watch()
+    pollHistory()
   } catch (err: any) {
     error.value = errorText(err)
   }
 }
 
+// Pick sensible defaults: from = the wallet holding the most USDC, to = another one.
+let defaultsSet = false
+watch(walletOptions, (list) => {
+  if (defaultsSet || list.length < 2) return
+  defaultsSet = true
+  if (!list.some((n) => n.id === from.value)) {
+    const best = [...list].sort((a, b) => (b.balance || 0) - (a.balance || 0))[0]
+    from.value = best ? best.id : ''
+  }
+  if (!list.some((n) => n.id === to.value) || to.value === from.value) {
+    const other = list.find((n) => n.id !== from.value)
+    to.value = other ? other.id : ''
+  }
+})
+
 onMounted(async () => {
   try {
     await Promise.all([loadNetworks(), loadHistory()])
-    const w = walletOptions.value
-    if (w.length) from.value = w[0].id
-    if (w.length > 1) to.value = w[1].id
-    if (history.value.some((t) => t.status === 'running')) watch()
+    if (history.value.some((t) => t.status === 'running')) pollHistory()
   } catch (err: any) {
     error.value = errorText(err)
   } finally {
@@ -278,3 +312,50 @@ onBeforeUnmount(() => {
   if (timer) clearInterval(timer)
 })
 </script>
+
+<style scoped>
+.mo-bridge-field {
+  display: block;
+  margin-bottom: 16px;
+}
+.mo-bridge-field span {
+  display: block;
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+  opacity: 0.8;
+}
+.mo-bridge-field select {
+  width: 100%;
+  padding: 14px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(128, 128, 128, 0.5);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+.mo-bridge-field select option {
+  color: #111;
+}
+.mo-bridge-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.mo-bridge-bal {
+  margin-right: 6px;
+}
+.mo-bridge-summary {
+  margin: 0 0 16px;
+}
+.mo-bridge-h2 {
+  font-size: 1.15rem;
+  margin: 32px 0 12px;
+}
+.mo-bridge-version {
+  margin-top: 32px;
+  font-size: 0.75rem;
+  opacity: 0.5;
+}
+</style>
