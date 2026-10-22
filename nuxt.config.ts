@@ -94,6 +94,16 @@ export default defineNuxtConfig({
   // two, so server functions may run longer than the 10 second default.
   nitro: {
     vercel: { functions: { maxDuration: 60 } },
+    // The Circle packages mix CommonJS and ES modules, which breaks named
+    // imports when they are loaded as separate files at run time. Bundling them
+    // into the server build lets the bundler sort that out.
+    externals: {
+      inline: [
+        '@circle-fin/app-kit',
+        '@circle-fin/adapter-circle-wallets',
+        '@circle-fin/developer-controlled-wallets',
+      ],
+    },
   },
 
   runtimeConfig: {
