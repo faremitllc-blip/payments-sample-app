@@ -91,9 +91,9 @@ if (import.meta.client) {
 const mainItems = [
   { to: '/wallet', label: 'Home', icon: 'mdi-home-variant-outline' },
   { to: '/assistant', label: 'Assistant', icon: 'mdi-shimmer' },
-  { to: '/buy', label: 'Buy USDC', icon: 'mdi-credit-card-plus-outline' },
   { to: '/send', label: 'Send', icon: 'mdi-arrow-top-right' },
   { to: '/receive', label: 'Receive', icon: 'mdi-arrow-bottom-left' },
+  { to: '/bridge', label: 'Bridge', icon: 'mdi-swap-horizontal' },
   { to: '/bank', label: 'Bank', icon: 'mdi-bank-outline' },
   { to: '/activity', label: 'Activity', icon: 'mdi-receipt-text-outline' },
 ]
@@ -107,9 +107,9 @@ const accountItems = [
 const titles: Record<string, string> = {
   '/wallet': 'Dashboard',
   '/assistant': 'Assistant',
-  '/buy': 'Buy USDC',
   '/send': 'Send',
   '/receive': 'Receive',
+  '/bridge': 'Bridge USDC',
   '/bank': 'Bank accounts',
   '/activity': 'Activity',
   '/profile': 'Profile',

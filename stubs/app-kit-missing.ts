@@ -1,8 +1,8 @@
-// Stands in for "@circle-fin/app-kit" while that package is not in package.json,
-// so the site still builds. Buying USDC stays switched off until the package is
-// added (see WALLET_APP_SETUP.md, "Buy USDC with fiat").
+// Stands in for "@circle-fin/app-kit" and "@circle-fin/adapter-circle-wallets"
+// while they are not in package.json, so the site still builds. Bridging stays
+// switched off until they are added (see WALLET_APP_SETUP.md, "Bridge USDC").
 const MESSAGE =
-  'The Arc App Kit package is not installed yet, so buying USDC is switched off.'
+  'The Circle App Kit packages are not installed yet, so bridging is switched off.'
 
 export class AppKit {
   constructor() {
@@ -10,8 +10,6 @@ export class AppKit {
   }
 }
 
-export class KitError extends Error {}
-
-export function createAppServerKit(): never {
+export function createCircleWalletsAdapter(): never {
   throw new Error(MESSAGE)
 }

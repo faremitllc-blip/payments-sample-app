@@ -2,12 +2,15 @@
 import { existsSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
-// "Buy USDC" needs the @circle-fin/app-kit package. If it has not been added to
-// package.json yet, point it at a small stand-in so the site still builds.
-const appKitInstalled = existsSync(
-  join(process.cwd(), 'node_modules', '@circle-fin', 'app-kit', 'package.json'),
-)
-const appKitStub = resolve(process.cwd(), 'stubs/app-kit-missing.ts')
+// Bridging USDC between networks needs the @circle-fin/app-kit and
+// @circle-fin/adapter-circle-wallets packages. If they have not been added to
+// package.json yet, point them at a small stand-in so the site still builds.
+const hasPackage = (...parts: string[]) =>
+  existsSync(join(process.cwd(), 'node_modules', ...parts, 'package.json'))
+const bridgeSdkInstalled =
+  hasPackage('@circle-fin', 'app-kit') &&
+  hasPackage('@circle-fin', 'adapter-circle-wallets')
+const sdkStub = resolve(process.cwd(), 'stubs/app-kit-missing.ts')
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-08-27',
@@ -80,12 +83,18 @@ export default defineNuxtConfig({
     '!plugins/vuetify.client.ts',
   ],
 
-  alias: appKitInstalled
+  alias: bridgeSdkInstalled
     ? {}
     : {
-        '@circle-fin/app-kit/server': appKitStub,
-        '@circle-fin/app-kit': appKitStub,
+        '@circle-fin/app-kit': sdkStub,
+        '@circle-fin/adapter-circle-wallets': sdkStub,
       },
+
+  // Bridging waits for Circle to confirm each step, which can take a minute or
+  // two, so server functions may run longer than the 10 second default.
+  nitro: {
+    vercel: { functions: { maxDuration: 60 } },
+  },
 
   runtimeConfig: {
     // The private keys which are only available within server-side
@@ -111,13 +120,8 @@ export default defineNuxtConfig({
     geminiApiKey: process.env.GEMINI_API_KEY || '',
     geminiModel: process.env.GEMINI_MODEL || '',
 
-    // Buy USDC with fiat (Arc App Kit on-ramp). Server only.
-    // The key comes from console.circle.com -> API keys (sandbox and production
-    // keys are different).
-    onrampApiKey: process.env.ONRAMP_API_KEY || '',
-    onrampSdkInstalled: appKitInstalled ? 'true' : '',
-    onrampEnv: process.env.ONRAMP_ENV || 'sandbox',
-    onrampReferrerDomain: process.env.ONRAMP_REFERRER_DOMAIN || '',
+    // Whether the bridging packages are installed (set at build time).
+    bridgeSdkInstalled: bridgeSdkInstalled ? 'true' : '',
 
     // Supabase service role key (server only)
     supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',

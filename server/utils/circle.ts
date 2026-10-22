@@ -4,7 +4,9 @@ import {
   getSetting,
   getWalletRow,
   saveSetting,
+  saveNetworkWallet,
   saveWalletRow,
+  type NetworkWalletRow,
   type WalletRow,
 } from './db'
 
@@ -48,7 +50,7 @@ const USDC_DECIMALS = 6
 
 let cachedPublicKey = ''
 
-function circleSettings() {
+export function circleSettings() {
   const config = useRuntimeConfig()
   const apiKey = cleanCredential(config.circleApiKey)
   const entitySecret = cleanCredential(config.circleEntitySecret)
@@ -263,6 +265,49 @@ export async function createWalletForUser(userId: string): Promise<WalletRow> {
     circle_wallet_id: wallet.id,
     address: wallet.address,
     blockchain: wallet.blockchain,
+  })
+}
+
+/**
+ * Creates the user's wallet on another network (for bridging), once. Safe to call
+ * again: it never makes a second wallet for the same network.
+ */
+export async function createWalletOnNetwork(
+  userId: string,
+  blockchain: string,
+): Promise<NetworkWalletRow> {
+  const settings = circleSettings()
+  const setId = await walletSetId()
+  const retryKey = uuidFromSeed(
+    `netwallet:${userId}:${setId}:${blockchain}:${settings.accountType}`,
+  )
+  const result = await circleRequest<{ data: { wallets: CircleWallet[] } }>(
+    '/v1/w3s/developer/wallets',
+    {
+      method: 'POST',
+      body: {
+        idempotencyKey: retryKey,
+        entitySecretCiphertext: await entitySecretCiphertext(),
+        walletSetId: setId,
+        blockchains: [blockchain],
+        accountType: settings.accountType,
+        count: 1,
+        metadata: [{ name: `Network wallet ${blockchain}`, refId: userId }],
+      },
+    },
+  )
+  const wallet = result.data.wallets[0]
+  if (!wallet) {
+    throw createError({
+      statusCode: 502,
+      statusMessage: 'Circle did not return a wallet',
+    })
+  }
+  return await saveNetworkWallet({
+    user_id: userId,
+    blockchain: wallet.blockchain,
+    circle_wallet_id: wallet.id,
+    address: wallet.address,
   })
 }
 

@@ -15,6 +15,28 @@ export interface WalletRow {
   created_at?: string
 }
 
+export interface NetworkWalletRow {
+  user_id: string
+  blockchain: string
+  circle_wallet_id: string
+  address: string
+  created_at?: string
+}
+
+export interface BridgeTransferRow {
+  id: string
+  user_id: string
+  from_chain: string
+  to_chain: string
+  amount: string
+  status: string
+  steps: unknown
+  result?: unknown
+  error?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
 export interface BankCustomerRow {
   user_id: string
   kyc_link_id: string
@@ -269,4 +291,87 @@ export async function saveProfileRow(
     throw createError({ statusCode: 500, statusMessage: 'Could not save your profile' })
   }
   return rows[0]
+}
+
+// ---- Wallets on other networks, and bridge transfers ----
+
+export async function listNetworkWallets(userId: string): Promise<NetworkWalletRow[]> {
+  return await dbRequest<NetworkWalletRow[]>(
+    `network_wallets?user_id=eq.${encodeURIComponent(userId)}&select=*`,
+  )
+}
+
+export async function saveNetworkWallet(
+  row: NetworkWalletRow,
+): Promise<NetworkWalletRow> {
+  const rows = await dbRequest<NetworkWalletRow[]>('network_wallets', {
+    method: 'POST',
+    body: { ...row },
+    prefer: 'resolution=ignore-duplicates,return=representation',
+  })
+  if (rows.length > 0) {
+    return rows[0]
+  }
+  const existing = (await listNetworkWallets(row.user_id)).find(
+    (w) => w.blockchain === row.blockchain,
+  )
+  if (!existing) {
+    throw createError({
+      statusCode: 500,
+      statusMessage: 'Could not save the wallet',
+    })
+  }
+  return existing
+}
+
+/** Returns the new row, or null when a transfer with this id already exists. */
+export async function createBridgeTransfer(
+  row: BridgeTransferRow,
+): Promise<BridgeTransferRow | null> {
+  const rows = await dbRequest<BridgeTransferRow[]>('bridge_transfers', {
+    method: 'POST',
+    body: { ...row },
+    prefer: 'resolution=ignore-duplicates,return=representation',
+  })
+  return rows.length > 0 ? rows[0] : null
+}
+
+export async function getBridgeTransfer(
+  userId: string,
+  id: string,
+): Promise<BridgeTransferRow | null> {
+  const rows = await dbRequest<BridgeTransferRow[]>(
+    `bridge_transfers?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}&select=*&limit=1`,
+  )
+  return rows.length > 0 ? rows[0] : null
+}
+
+export async function listBridgeTransfers(
+  userId: string,
+  limit = 20,
+): Promise<BridgeTransferRow[]> {
+  return await dbRequest<BridgeTransferRow[]>(
+    `bridge_transfers?user_id=eq.${encodeURIComponent(userId)}&select=id,user_id,from_chain,to_chain,amount,status,steps,error,created_at,updated_at&order=created_at.desc&limit=${limit}`,
+  )
+}
+
+export async function updateBridgeTransfer(
+  id: string,
+  patch: Partial<Pick<BridgeTransferRow, 'status' | 'steps' | 'result' | 'error'>>,
+): Promise<void> {
+  await dbRequest<unknown>(`bridge_transfers?id=eq.${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: { ...patch, updated_at: new Date().toISOString() },
+    prefer: 'return=minimal',
+  })
+}
+
+export async function getBridgeTransferResult(
+  userId: string,
+  id: string,
+): Promise<unknown> {
+  const rows = await dbRequest<Array<{ result?: unknown }>>(
+    `bridge_transfers?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}&select=result&limit=1`,
+  )
+  return rows.length > 0 ? rows[0].result : null
 }
