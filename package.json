@@ -35,6 +35,8 @@
     "vue-json-pretty": "^2.2.4",
     "vuetify": "^3.4.0"
   },
+     ,@circle-fin/app-kit": "latest",
+   "@circle-fin/adapter-circle-wallets": "latest",
   "devDependencies": {
     "@babel/preset-env": "^7.28.3",
     "@nuxt/devtools": "^3.4.1",
