@@ -94,14 +94,22 @@ export default defineNuxtConfig({
   // two, so server functions may run longer than the 10 second default.
   nitro: {
     vercel: { functions: { maxDuration: 60 } },
+    // jayson (used by the kit's Solana support) is imported by folder name, which
+    // Node's module loader refuses. Point it at the real file instead.
+    alias: {
+      'jayson/lib/client/browser': 'jayson/lib/client/browser/index.js',
+    },
     // The Circle packages mix CommonJS and ES modules, which breaks named
     // imports when they are loaded as separate files at run time. Bundling them
     // into the server build lets the bundler sort that out.
     externals: {
       inline: [
-        '@circle-fin/app-kit',
-        '@circle-fin/adapter-circle-wallets',
-        '@circle-fin/developer-controlled-wallets',
+        /@circle-fin\//,
+        // Pulled in by the kit's Solana support. Its folder-style imports only
+        // work when the bundler handles it too.
+        /@solana\//,
+        'jayson',
+        'rpc-websockets',
       ],
     },
   },
