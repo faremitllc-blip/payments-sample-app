@@ -1,118 +1,32 @@
-import { circleSettings, getBalances, isUsdc } from './circle'
 import {
-  cleanSteps,
+  executeContract,
+  getBalances,
+  getTransactionStatus,
+  isUsdc,
+  uuidFromSeed,
+  circleSettings,
+} from './circle'
+import {
+  addressToBytes32,
+  FINALITY_STANDARD,
   findNetwork,
-  type BridgeStepView,
+  IRIS_API,
+  MESSAGE_TRANSMITTER_V2,
+  readState,
+  toMicro,
+  TOKEN_MESSENGER_V2,
+  txOutcome,
+  ZERO_BYTES32,
+  type BridgeState,
+  type TxPhase,
 } from './crosschainRules'
-import { getWalletRow, listNetworkWallets, updateBridgeTransfer } from './db'
-
-// The App Kit packages are loaded only when a bridge starts, so the rest of the
-// app works even before they are installed.
-async function loadKit() {
-  const flag = String(useRuntimeConfig().bridgeSdkInstalled || '')
-  if (!flag) {
-    throw createError({
-      statusCode: 503,
-      statusMessage:
-        'Bridging is not switched on yet: add the @circle-fin/app-kit and @circle-fin/adapter-circle-wallets packages and redeploy',
-    })
-  }
-  const kitModule: any = await import('@circle-fin/app-kit')
-  const adapterModule: any = await import('@circle-fin/adapter-circle-wallets')
-  const settings = circleSettings()
-  const adapter = adapterModule.createCircleWalletsAdapter({
-    apiKey: settings.apiKey,
-    entitySecret: settings.entitySecret,
-  })
-  const kit = new kitModule.AppKit()
-  return { kit, adapter }
-}
-
-export interface RunBridgeInput {
-  transferId: string
-  fromCircle: string
-  toCircle: string
-  fromAddress: string
-  toAddress: string
-  amount: string
-  retry?: unknown
-}
-
-/**
- * Runs the bridge in the background and records progress in the database.
- * It never throws: failures are saved on the transfer so the page can show them.
- */
-export async function runBridge(input: RunBridgeInput): Promise<void> {
-  const live = !circleSettings().apiKey.startsWith('TEST_API_KEY:')
-  const from = findNetwork(input.fromCircle, live)
-  const to = findNetwork(input.toCircle, live)
-  const steps: BridgeStepView[] = []
-
-  const save = async (status: string, extra: { error?: string; result?: unknown } = {}) => {
-    try {
-      await updateBridgeTransfer(input.transferId, {
-        status,
-        steps: cleanSteps(steps) as unknown,
-        ...extra,
-      })
-    } catch {
-      // Progress saving must not stop the bridge itself.
-    }
-  }
-
-  try {
-    if (!from || !to) throw new Error('Unsupported network')
-    const { kit, adapter } = await loadKit()
-
-    // Save each step as the kit reports it.
-    if (typeof kit.on === 'function') {
-      kit.on('*', (payload: any) => {
-        const name = String(payload?.method || payload?.name || payload?.type || 'step')
-        const found = steps.find((s) => s.name === name)
-        const next: BridgeStepView = {
-          name,
-          state: String(payload?.values?.state || payload?.state || 'pending'),
-          txHash: payload?.values?.txHash,
-          explorerUrl: payload?.values?.explorerUrl,
-        }
-        if (found) Object.assign(found, next)
-        else steps.push(next)
-        void save('running')
-      })
-    }
-
-    const result: any = input.retry
-      ? await kit.retryBridge(input.retry, { from: adapter, to: adapter })
-      : await kit.bridge({
-          from: { adapter, chain: from.kit, address: input.fromAddress },
-          to: { adapter, chain: to.kit, address: input.toAddress },
-          amount: input.amount,
-        })
-
-    const resultSteps = cleanSteps(result?.steps)
-    if (resultSteps.length) {
-      steps.splice(0, steps.length, ...resultSteps)
-    }
-    const failed = result?.state === 'error' || steps.some((s) => s.state === 'error')
-    if (failed) {
-      // Keep the raw result so the transfer can be retried from where it stopped.
-      await save('failed', {
-        error: 'The bridge stopped part-way. You can retry it.',
-        result,
-      })
-      return
-    }
-    await save('completed', { result: { state: result?.state || 'success' } })
-  } catch (err: any) {
-    const message =
-      typeof err?.statusMessage === 'string'
-        ? err.statusMessage
-        : typeof err?.message === 'string'
-          ? err.message
-          : 'The bridge failed'
-    await save('failed', { error: message.slice(0, 300) })
-  }
-}
+import {
+  getBridgeTransfer,
+  getWalletRow,
+  listNetworkWallets,
+  updateBridgeTransfer,
+  type BridgeTransferRow,
+} from './db'
 
 export interface UserNetworkWallet {
   blockchain: string
@@ -148,4 +62,195 @@ export async function usdcBalance(circleWalletId: string): Promise<number> {
   const usdc = balances.find((b) => isUsdc(b))
   const value = Number(usdc?.amount || 0)
   return Number.isFinite(value) ? value : 0
+}
+
+async function save(row: BridgeTransferRow, state: BridgeState, patch: {
+  status?: string
+  error?: string | null
+} = {}) {
+  await updateBridgeTransfer(row.id, {
+    status: patch.status || row.status,
+    result: state as unknown,
+    ...(patch.error !== undefined ? { error: patch.error } : {}),
+  })
+}
+
+function messageOf(err: any): string {
+  const m = err?.statusMessage || err?.message
+  return typeof m === 'string' && m ? m.slice(0, 300) : 'The step failed'
+}
+
+/**
+ * Moves a bridge forward by one small step and returns quickly. The page calls
+ * this every few seconds. Every on-chain step uses a fixed idempotency key, so
+ * calling it twice at the same time can never send a transaction twice.
+ */
+export async function advanceBridge(userId: string, transferId: string): Promise<void> {
+  const row = await getBridgeTransfer(userId, transferId)
+  if (!row || row.status !== 'running') return
+
+  const live = circleSettings().live
+  const from = findNetwork(row.from_chain, live)
+  const to = findNetwork(row.to_chain, live)
+  const wallets = await userNetworkWallets(userId)
+  const source = wallets.find((w) => w.blockchain === row.from_chain)
+  const target = wallets.find((w) => w.blockchain === row.to_chain)
+  const state = readState(row.result)
+
+  if (!from || !to || !source || !target) {
+    await save(row, state, { status: 'failed', error: 'The wallets for this bridge are missing' })
+    return
+  }
+
+  const fail = async (phase: TxPhase, error: string) => {
+    state.failedPhase = phase
+    await save(row, state, { status: 'failed', error })
+  }
+
+  // Sends a contract call once and remembers its Circle id.
+  const submit = async (
+    phase: TxPhase,
+    walletId: string,
+    contract: string,
+    signature: string,
+    params: Array<string | number>,
+  ): Promise<void> => {
+    try {
+      const tx = await executeContract({
+        walletId,
+        contractAddress: contract,
+        signature,
+        params,
+        idempotencyKey: uuidFromSeed(`bridge:${row.id}:${phase}:${state.attempts[phase]}`),
+        refId: `bridge:${row.id}:${phase}`,
+      })
+      state.tx[phase] = { id: tx.id }
+      await save(row, state)
+    } catch (err: any) {
+      await fail(phase, messageOf(err))
+    }
+  }
+
+  // Checks a sent transaction. Returns true once it is confirmed on chain.
+  const confirmed = async (phase: TxPhase): Promise<boolean> => {
+    const ref = state.tx[phase]
+    if (!ref) return false
+    let status
+    try {
+      status = await getTransactionStatus(ref.id)
+    } catch {
+      return false // Try again on the next poll.
+    }
+    if (status.txHash) ref.hash = status.txHash
+    const outcome = txOutcome(status.state)
+    if (outcome === 'failed') {
+      await fail(
+        phase,
+        `Circle reported ${status.state}${status.errorReason ? `: ${status.errorReason}` : ''}`,
+      )
+      return false
+    }
+    if (outcome === 'done') {
+      return true
+    }
+    await save(row, state)
+    return false
+  }
+
+  const micro = toMicro(row.amount)
+  if (!micro) {
+    await save(row, state, { status: 'failed', error: 'Invalid amount' })
+    return
+  }
+
+  if (state.phase === 'approve') {
+    if (!state.tx.approve) {
+      await submit('approve', source.circleWalletId, from.usdc, 'approve(address,uint256)', [
+        TOKEN_MESSENGER_V2,
+        micro,
+      ])
+    } else if (await confirmed('approve')) {
+      state.phase = 'burn'
+      await save(row, state)
+    }
+    return
+  }
+
+  if (state.phase === 'burn') {
+    if (!state.tx.burn) {
+      // Standard transfer: no CCTP fee, so maxFee is 0.
+      await submit(
+        'burn',
+        source.circleWalletId,
+        TOKEN_MESSENGER_V2,
+        'depositForBurn(uint256,uint32,bytes32,address,bytes32,uint256,uint32)',
+        [
+          micro,
+          to.domain,
+          addressToBytes32(target.address),
+          from.usdc,
+          ZERO_BYTES32,
+          '0',
+          FINALITY_STANDARD,
+        ],
+      )
+    } else if (await confirmed('burn')) {
+      if (!state.tx.burn?.hash) {
+        // Confirmed but no hash yet: look again on the next poll.
+        await save(row, state)
+        return
+      }
+      state.phase = 'attest'
+      await save(row, state)
+    }
+    return
+  }
+
+  if (state.phase === 'attest') {
+    const hash = state.tx.burn?.hash
+    if (!hash) {
+      await fail('burn', 'The burn transaction hash is missing')
+      return
+    }
+    try {
+      const res: any = await $fetch(
+        `${IRIS_API}/v2/messages/${from.domain}?transactionHash=${encodeURIComponent(hash)}`,
+      )
+      const m = Array.isArray(res?.messages) ? res.messages[0] : null
+      if (
+        m &&
+        m.status === 'complete' &&
+        typeof m.message === 'string' &&
+        m.message.startsWith('0x') &&
+        m.message.length > 2 &&
+        typeof m.attestation === 'string' &&
+        m.attestation.startsWith('0x')
+      ) {
+        state.message = m.message
+        state.attestation = m.attestation
+        state.phase = 'mint'
+        await save(row, state)
+      }
+    } catch {
+      // Circle returns "not found" until the burn is seen. Keep waiting.
+    }
+    return
+  }
+
+  if (state.phase === 'mint') {
+    if (!state.message || !state.attestation) {
+      state.phase = 'attest'
+      await save(row, state)
+      return
+    }
+    if (!state.tx.mint) {
+      await submit('mint', target.circleWalletId, MESSAGE_TRANSMITTER_V2, 'receiveMessage(bytes,bytes)', [
+        state.message,
+        state.attestation,
+      ])
+    } else if (await confirmed('mint')) {
+      state.phase = 'done'
+      await save(row, state, { status: 'completed', error: null })
+    }
+  }
 }

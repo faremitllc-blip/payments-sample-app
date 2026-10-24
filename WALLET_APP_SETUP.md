@@ -208,23 +208,20 @@ The landing page has a sun/moon button in the top bar. The choice is saved in th
 
 The Bank page shows the last known details straight away (kept per email on this device, without verification links, and removed on log out) and refreshes them quietly, with a small "Updating…" note. Deposit history loads after the details. On the server, an approved customer's status is reused for 2 minutes instead of 15 seconds.
 
-## Bridging USDC between networks (v33)
+## Bridging USDC between networks (v40)
 
-The **Bridge** page moves USDC between a user's own wallets on different networks using Circle's App Kit (which wraps CCTP: USDC is burned on one network and minted on the other). The destination is always the user's own wallet on the other network; nothing the browser sends can change that.
+The **Bridge** page moves USDC between a user's own wallets on different networks using Circle's CCTP V2 directly, through the same Circle wallet API the rest of Mondo uses. No extra npm packages are needed (you can remove `@circle-fin/app-kit` and `@circle-fin/adapter-circle-wallets` from `package.json`).
 
-**One-time setup**
+**One-time setup:** run `supabase/add-crosschain.sql` in the Supabase SQL Editor (adds `network_wallets` and `bridge_transfers`), then redeploy.
 
-1. In the repo's `package.json`, add under `dependencies`: `"@circle-fin/app-kit": "latest"` and `"@circle-fin/adapter-circle-wallets": "latest"` (pin the exact versions after the first good build). Until both are installed the build still works and the page shows "Bridging is not switched on yet".
-2. In Supabase, run `supabase/add-crosschain.sql` (SQL Editor). It adds `network_wallets` and `bridge_transfers`.
-3. Redeploy with the build cache unticked.
+**How a bridge works.** USDC is burned on the source network and minted on the destination, so it is real USDC, not a wrapped copy. Four steps, each saved in the database:
+1. Approve USDC for Circle's TokenMessenger on the source network.
+2. Burn it (`depositForBurn`, standard transfer, no CCTP fee).
+3. Wait for Circle's attestation (`iris-api.circle.com`). This follows the source chain's finality and can take several minutes.
+4. Mint on the destination network (`receiveMessage`) from the user's wallet there.
 
-**How it behaves**
+The page asks the server to advance the bridge every 6 seconds while it is open, so there is no long-running job and Vercel's time limit does not matter. If the page is closed, the bridge waits and carries on when it is opened again. Every on-chain step uses a fixed idempotency key, so nothing is sent twice. **Retry** repeats only the step that failed.
 
-- Test API keys show testnets only; live keys show mainnets only (live also needs `ALLOW_LIVE_FUNDS=true`).
-- A user adds a wallet on each network they want, then bridges between them. Amounts are 1 USDC up to `MAX_SEND_USDC` (default 100 test / 20 live), and never more than the source balance.
-- Each network needs a little of its own gas token in that wallet. On testnets use the Circle faucet.
-- One bridge at a time per user. Progress is saved; a failed bridge can be resumed with **Retry** from where it stopped.
-- The bridge runs in the background of a Vercel function with a 60 second limit (`maxDuration`; Hobby plans may cap this lower). If the host cuts it off, the transfer shows "Interrupted" and Retry continues it.
-- The chain names in `server/utils/crosschainRules.ts` follow the App Kit naming. If the kit rejects one, fix the `kit` value there.
+**Rules:** mainnet only (Ethereum, Base, Polygon, Arbitrum, Avalanche, OP Mainnet) and live Circle keys only; the destination is always the user's own wallet; 1 USDC up to `MAX_SEND_USDC`; one bridge at a time. Each wallet needs a little of its own network's gas token (for example POL on Polygon, ETH on Base). Contract addresses, domain ids and USDC addresses are in `server/utils/crosschainRules.ts` and come from Circle's documentation.
 
-Delete these from GitHub if still there: `pages/buy.vue`, `server/api/onramp/`, `server/utils/onramp.ts`, `utils/globe.ts`, `public/globe/`.
+Delete these from GitHub if still there: `pages/buy.vue`, `server/api/onramp/`, `server/utils/onramp.ts`, `utils/globe.ts`, `public/globe/`, `stubs/`.

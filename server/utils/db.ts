@@ -351,7 +351,7 @@ export async function listBridgeTransfers(
   limit = 20,
 ): Promise<BridgeTransferRow[]> {
   return await dbRequest<BridgeTransferRow[]>(
-    `bridge_transfers?user_id=eq.${encodeURIComponent(userId)}&select=id,user_id,from_chain,to_chain,amount,status,steps,error,created_at,updated_at&order=created_at.desc&limit=${limit}`,
+    `bridge_transfers?user_id=eq.${encodeURIComponent(userId)}&select=id,user_id,from_chain,to_chain,amount,status,steps,result,error,created_at,updated_at&order=created_at.desc&limit=${limit}`,
   )
 }
 

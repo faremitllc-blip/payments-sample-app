@@ -106,7 +106,7 @@ function circleErrorMessage(err: any): string {
   return typeof message === 'string' && message ? message : 'Circle request failed'
 }
 
-async function circleRequest<T>(
+export async function circleRequest<T>(
   path: string,
   options: {
     method?: 'GET' | 'POST'
@@ -172,7 +172,7 @@ export function usdcToMicro(value: string): bigint | null {
   return whole * BigInt(10 ** USDC_DECIMALS) + BigInt(fraction || '0')
 }
 
-async function entitySecretCiphertext(): Promise<string> {
+export async function entitySecretCiphertext(): Promise<string> {
   const settings = circleSettings()
   if (!cachedPublicKey) {
     const result = await circleRequest<{ data: { publicKey: string } }>(
@@ -395,6 +395,53 @@ export async function sendUsdc(
     },
   )
   return result.data
+}
+
+/**
+ * Calls a smart contract from one of the user's wallets (used for bridging).
+ * The idempotency key makes a repeated call return the same transaction
+ * instead of sending it twice.
+ */
+export async function executeContract(input: {
+  walletId: string
+  contractAddress: string
+  signature: string
+  params: Array<string | number>
+  idempotencyKey: string
+  refId: string
+}): Promise<{ id: string; state: string }> {
+  const result = await circleRequest<{ data: { id: string; state: string } }>(
+    '/v1/w3s/developer/transactions/contractExecution',
+    {
+      method: 'POST',
+      body: {
+        idempotencyKey: input.idempotencyKey,
+        entitySecretCiphertext: await entitySecretCiphertext(),
+        walletId: input.walletId,
+        contractAddress: input.contractAddress,
+        abiFunctionSignature: input.signature,
+        abiParameters: input.params,
+        feeLevel: 'MEDIUM',
+        refId: input.refId,
+      },
+    },
+  )
+  return result.data
+}
+
+export interface TransactionStatus {
+  id: string
+  state: string
+  txHash?: string
+  errorReason?: string
+}
+
+export async function getTransactionStatus(id: string): Promise<TransactionStatus> {
+  const result = await circleRequest<{ data: { transaction: TransactionStatus } }>(
+    `/v1/w3s/transactions/${encodeURIComponent(id)}`,
+  )
+  const t = result.data.transaction
+  return { id: t.id, state: t.state, txHash: t.txHash, errorReason: t.errorReason }
 }
 
 export async function listTransactions(

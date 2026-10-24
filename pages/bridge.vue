@@ -15,14 +15,17 @@
 
     <template v-else-if="data">
       <v-alert
-        v-if="!data.sdkReady"
+        v-if="!data.networks.length"
         type="warning"
         variant="tonal"
         class="my-4"
       >
-        Bridging is not switched on yet. The site owner needs to add the
-        Circle App Kit packages and redeploy.
+        Bridging only works with live Circle keys.
       </v-alert>
+      <p v-if="running" class="fm-notice mb-4" role="status">
+        A bridge is in progress. Keep this page open: it moves to the next step
+        every few seconds, and it can take about 15 minutes in total.
+      </p>
 
       <div class="fm-list mb-6">
         <div v-for="n in data.networks" :key="n.id" class="fm-list-item">
@@ -88,7 +91,7 @@
         />
         <p class="fm-notice mt-3">
           Each network charges a small fee in its own gas token, paid from the
-          wallet on that network. A bridge usually takes a few minutes.
+          wallet on that network, so each wallet needs a little gas (for example POL on Polygon, ETH on Base). The bridge has four steps and is free of Circle fees.
         </p>
         <v-btn
           color="primary"
@@ -111,14 +114,14 @@
             <span>{{ label(t.from) }} → {{ label(t.to) }}</span>
             <span v-if="t.error">{{ t.error }}</span>
             <span v-for="s in t.steps" :key="s.name">
-              {{ s.name }}: {{ s.state }}
+              {{ stepMark(s.state) }} {{ s.name }}
               <a v-if="s.explorerUrl" :href="s.explorerUrl" target="_blank" rel="noopener">view</a>
             </span>
           </div>
           <div>
             <span>{{ statusText(t.status) }}</span>
             <v-btn
-              v-if="t.status === 'failed' || t.status === 'stalled'"
+              v-if="t.status === 'failed'"
               size="small"
               variant="tonal"
               class="ml-2"
@@ -130,7 +133,7 @@
         </div>
       </div>
     </template>
-    <p class="mo-bridge-version">Bridge page v39</p>
+    <p class="mo-bridge-version">Bridge page v40</p>
   </div>
 </template>
 
@@ -146,7 +149,7 @@ interface NetworkRow {
 }
 interface StepRow {
   name: string
-  state: string
+  state: 'waiting' | 'running' | 'done' | 'failed'
   explorerUrl?: string
 }
 interface HistoryRow {
@@ -165,7 +168,7 @@ const error = ref('')
 const data = ref<{
   networks: NetworkRow[]
   maxUsdc: number
-  sdkReady: boolean
+  live: boolean
 } | null>(null)
 const history = ref<HistoryRow[]>([])
 const from = ref('')
@@ -180,7 +183,7 @@ const walletOptions = computed(() =>
 )
 const canStart = computed(
   () =>
-    Boolean(data.value?.sdkReady) &&
+    Boolean(data.value?.networks.length) &&
     Boolean(from.value) &&
     Boolean(to.value) &&
     from.value !== to.value &&
@@ -203,14 +206,12 @@ function label(id: string) {
   return data.value?.networks.find((n) => n.id === id)?.label || id
 }
 function statusText(s: string) {
-  return s === 'completed'
-    ? 'Complete'
-    : s === 'failed'
-      ? 'Failed'
-      : s === 'stalled'
-        ? 'Interrupted'
-        : 'In progress'
+  return s === 'completed' ? 'Complete' : s === 'failed' ? 'Failed' : 'In progress'
 }
+function stepMark(s: StepRow['state']) {
+  return s === 'done' ? '✓' : s === 'failed' ? '✗' : s === 'running' ? '…' : '·'
+}
+const running = computed(() => history.value.some((t) => t.status === 'running'))
 
 async function loadHistory() {
   const r = await api<{ transfers: HistoryRow[] }>('/api/crosschain/history')
@@ -224,6 +225,10 @@ function pollHistory() {
   if (timer) return
   timer = setInterval(async () => {
     try {
+      // Nudge each running bridge to its next step, then refresh the list.
+      for (const t of history.value.filter((x) => x.status === 'running')) {
+        await api('/api/crosschain/advance', { method: 'POST', body: { id: t.id } })
+      }
       await loadHistory()
       if (!history.value.some((t) => t.status === 'running')) {
         if (timer) clearInterval(timer)
@@ -233,7 +238,7 @@ function pollHistory() {
     } catch {
       /* keep trying */
     }
-  }, 5000)
+  }, 6000)
 }
 
 async function createWallet(id: string) {

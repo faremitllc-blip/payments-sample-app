@@ -1,7 +1,7 @@
 import { rateLimit, requireUser } from '../../utils/auth'
 import { circleSettings, isUuid } from '../../utils/circle'
-import { runBridge, userNetworkWallets, usdcBalance } from '../../utils/crosschain'
-import { checkBridgeAmount, checkRoute } from '../../utils/crosschainRules'
+import { advanceBridge, userNetworkWallets, usdcBalance } from '../../utils/crosschain'
+import { checkBridgeAmount, checkRoute, newState } from '../../utils/crosschainRules'
 import { createBridgeTransfer, listBridgeTransfers } from '../../utils/db'
 
 interface StartBody {
@@ -43,12 +43,7 @@ export default defineEventHandler(async (event) => {
 
   // One bridge at a time per user, so funds are never moved twice by accident.
   const recent = await listBridgeTransfers(user.id, 5)
-  const active = recent.find(
-    (t) =>
-      t.status === 'running' &&
-      t.id !== requestId &&
-      Date.now() - new Date(t.updated_at || t.created_at || 0).getTime() < 15 * 60_000,
-  )
+  const active = recent.find((t) => t.status === 'running' && t.id !== requestId)
   if (active) {
     throw createError({
       statusCode: 409,
@@ -70,24 +65,14 @@ export default defineEventHandler(async (event) => {
     amount: amount.amount!,
     status: 'running',
     steps: [],
+    result: newState() as unknown,
   })
   // Same request id sent twice: do not start a second bridge.
   if (!created) {
     return { id: requestId, status: 'running', duplicate: true }
   }
 
-  const job = runBridge({
-    transferId: requestId,
-    fromCircle: from,
-    toCircle: to,
-    fromAddress: source.address,
-    toAddress: target.address,
-    amount: amount.amount!,
-  })
-  if (typeof (event as any).waitUntil === 'function') {
-    ;(event as any).waitUntil(job)
-  } else {
-    void job
-  }
+  // Send the first step straight away; the page keeps it moving after that.
+  await advanceBridge(user.id, requestId)
   return { id: requestId, status: 'running' }
 })

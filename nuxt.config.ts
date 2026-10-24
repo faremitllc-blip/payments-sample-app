@@ -1,16 +1,4 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
-import { existsSync } from 'node:fs'
-import { join, resolve } from 'node:path'
-
-// Bridging USDC between networks needs the @circle-fin/app-kit and
-// @circle-fin/adapter-circle-wallets packages. If they have not been added to
-// package.json yet, point them at a small stand-in so the site still builds.
-const hasPackage = (...parts: string[]) =>
-  existsSync(join(process.cwd(), 'node_modules', ...parts, 'package.json'))
-const bridgeSdkInstalled =
-  hasPackage('@circle-fin', 'app-kit') &&
-  hasPackage('@circle-fin', 'adapter-circle-wallets')
-const sdkStub = resolve(process.cwd(), 'stubs/app-kit-missing.ts')
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-08-27',
@@ -83,35 +71,10 @@ export default defineNuxtConfig({
     '!plugins/vuetify.client.ts',
   ],
 
-  alias: bridgeSdkInstalled
-    ? {}
-    : {
-        '@circle-fin/app-kit': sdkStub,
-        '@circle-fin/adapter-circle-wallets': sdkStub,
-      },
-
-  // Bridging waits for Circle to confirm each step, which can take a minute or
-  // two, so server functions may run longer than the 10 second default.
+  // Server routes that talk to Circle can wait a little longer than the
+  // 10 second default.
   nitro: {
-    vercel: { functions: { maxDuration: 60 } },
-    // jayson (used by the kit's Solana support) is imported by folder name, which
-    // Node's module loader refuses. Point it at the real file instead.
-    alias: {
-      'jayson/lib/client/browser': 'jayson/lib/client/browser/index.js',
-    },
-    // The Circle packages mix CommonJS and ES modules, which breaks named
-    // imports when they are loaded as separate files at run time. Bundling them
-    // into the server build lets the bundler sort that out.
-    externals: {
-      inline: [
-        /@circle-fin\//,
-        // Pulled in by the kit's Solana support. Its folder-style imports only
-        // work when the bundler handles it too.
-        /@solana\//,
-        'jayson',
-        'rpc-websockets',
-      ],
-    },
+    vercel: { functions: { maxDuration: 30 } },
   },
 
   runtimeConfig: {
@@ -139,7 +102,6 @@ export default defineNuxtConfig({
     geminiModel: process.env.GEMINI_MODEL || '',
 
     // Whether the bridging packages are installed (set at build time).
-    bridgeSdkInstalled: bridgeSdkInstalled ? 'true' : '',
 
     // Supabase service role key (server only)
     supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',

@@ -35,6 +35,5 @@ export default defineEventHandler(async (event) => {
     networks: rows,
     maxUsdc: settings.maxSendUsdc,
     live: settings.live,
-    sdkReady: Boolean(String(useRuntimeConfig().bridgeSdkInstalled || '')),
   }
 })
