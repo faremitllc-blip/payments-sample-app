@@ -90,7 +90,7 @@
     </section>
 
     <div class="mo-prof-pair">
-      <section v-if="bankConfigured" class="mo-card">
+      <section v-if="bankConfigured" id="identity" class="mo-card mo-anchor">
         <div class="mo-card-head">
           <h2>Identity check</h2>
           <span class="mo-status" :class="kycChip.className">{{ kycChip.text }}</span>
@@ -137,6 +137,7 @@ const { profile, load, save } = useProfile()
 const { wallet, loadWallet } = useWallet()
 const { configured: bankConfigured, status: bankStatus, load: loadBank } = useBank()
 
+const route = useRoute()
 const error = ref('')
 const name = ref('')
 const savingName = ref(false)
@@ -242,6 +243,20 @@ onMounted(async () => {
     error.value = errorText(err)
   }
   loadWallet().catch(() => undefined)
-  loadBank().catch(() => undefined)
+  loadBank()
+    .catch(() => undefined)
+    .finally(scrollToHash)
 })
+
+// "Identity check" in the menu opens this page at the ID status card.
+function scrollToHash() {
+  if (route.hash !== '#identity') {
+    return
+  }
+  nextTick(() => {
+    document.getElementById('identity')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
+}
+watch(() => route.hash, scrollToHash)
 </script>
+

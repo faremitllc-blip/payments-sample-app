@@ -101,7 +101,7 @@ const mainItems = [
 const accountItems = [
   { to: '/profile', label: 'Profile', icon: 'mdi-account-circle-outline' },
   { to: '/kyc', label: 'KYC status', icon: 'mdi-shield-account-outline' },
-  { to: '/verify', label: 'Identity check', icon: 'mdi-shield-check-outline' },
+  { to: '/profile#identity', label: 'Identity check', icon: 'mdi-shield-check-outline' },
 ]
 
 const titles: Record<string, string> = {

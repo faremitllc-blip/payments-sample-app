@@ -2578,3 +2578,7 @@ html[data-mo-theme='light'] .fm .fm-band {
   font-size: 0.8rem;
   opacity: 0.85;
 }
+
+.mo-anchor {
+  scroll-margin-top: 88px;
+}
