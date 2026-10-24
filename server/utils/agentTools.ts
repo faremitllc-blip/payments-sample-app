@@ -2,6 +2,7 @@ import { monthTotals } from '../../utils/activityStats'
 import { refreshBankStatus } from './bank'
 import { bridgeMode } from './bridge'
 import { getBalances, isUsdc, listTransactions } from './circle'
+import { allUsdcBalances } from './crosschain'
 import { getBankCustomer, getWalletRow, listBankAccounts } from './db'
 import {
   checkAction,
@@ -28,9 +29,12 @@ export async function runReadTool(
       if (!wallet) {
         return { error: 'The user has no wallet yet.' }
       }
-      const balances = await getBalances(wallet.circle_wallet_id)
-      const usdc = balances.find(isUsdc)
-      return { usdc: usdc ? usdc.amount : '0' }
+      const all = await allUsdcBalances(userId, wallet)
+      return {
+        usdc: all.total,
+        by_network: all.wallets.map((w) => ({ network: w.label, usdc: w.usdc })),
+        note: 'usdc is the total across all networks. Sending uses the main wallet only.',
+      }
     }
 
     case 'get_recent_activity':

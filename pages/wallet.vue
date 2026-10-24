@@ -158,6 +158,11 @@
             <div class="mo-wallet-main">
               <p class="mo-wallet-label">USDC balance</p>
               <p class="mo-wallet-balance">{{ formatUsdc(usdc) }}</p>
+              <p v-if="balances.length > 1" class="mo-wallet-split">
+                <span v-for="b in balances" :key="b.blockchain">
+                  {{ b.label }} {{ formatUsdc(b.usdc) }}
+                </span>
+              </p>
             </div>
             <div class="mo-wallet-bottom">
               <div class="mo-wallet-who">
@@ -273,6 +278,7 @@ const {
   wallet,
   walletLoaded,
   usdc,
+  balances,
   activity,
   loadDashboard,
   createWallet,

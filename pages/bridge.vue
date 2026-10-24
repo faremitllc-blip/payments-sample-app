@@ -133,7 +133,7 @@
         </div>
       </div>
     </template>
-    <p class="mo-bridge-version">Bridge page v40</p>
+    <p class="mo-bridge-version">Bridge page v41</p>
   </div>
 </template>
 

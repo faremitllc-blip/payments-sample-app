@@ -7,6 +7,13 @@ export interface WalletInfo {
   blockchain: string
 }
 
+export interface WalletBalanceItem {
+  blockchain: string
+  label: string
+  address: string
+  usdc: string
+}
+
 export interface ActivityItem {
   id: string
   direction: 'sent' | 'received'
@@ -81,7 +88,10 @@ export function useWallet() {
 
   const wallet = useState<WalletInfo | null>('fm-wallet', () => null)
   const walletLoaded = useState<boolean>('fm-wallet-loaded', () => false)
+  // `usdc` is the total across all network wallets; `mainUsdc` is what can be sent.
   const usdc = useState<string>('fm-usdc', () => '0')
+  const mainUsdc = useState<string>('fm-usdc-main', () => '0')
+  const balances = useState<WalletBalanceItem[]>('fm-balances', () => [])
   const activity = useState<ActivityItem[]>('fm-activity', () => [])
 
   async function loadWallet(): Promise<void> {
@@ -94,8 +104,14 @@ export function useWallet() {
     if (!wallet.value) {
       return
     }
-    const result = await api<{ usdc: string }>('/api/wallet/balance')
+    const result = await api<{
+      usdc: string
+      mainUsdc: string
+      balances: WalletBalanceItem[]
+    }>('/api/wallet/balance')
     usdc.value = result.usdc
+    mainUsdc.value = result.mainUsdc
+    balances.value = result.balances
   }
 
   async function loadActivity(): Promise<void> {
@@ -115,11 +131,15 @@ export function useWallet() {
     const result = await api<{
       wallet: WalletInfo | null
       usdc: string
+      mainUsdc: string
+      balances: WalletBalanceItem[]
       transactions: ActivityItem[]
     }>('/api/dashboard')
     wallet.value = result.wallet
     walletLoaded.value = true
     usdc.value = result.usdc
+    mainUsdc.value = result.mainUsdc
+    balances.value = result.balances
     activity.value = result.transactions
   }
 
@@ -130,12 +150,16 @@ export function useWallet() {
     wallet.value = result.wallet
     walletLoaded.value = true
     usdc.value = '0'
+    mainUsdc.value = '0'
+    balances.value = []
   }
 
   function reset(): void {
     wallet.value = null
     walletLoaded.value = false
     usdc.value = '0'
+    mainUsdc.value = '0'
+    balances.value = []
     activity.value = []
   }
 
@@ -143,6 +167,8 @@ export function useWallet() {
     wallet,
     walletLoaded,
     usdc,
+    mainUsdc,
+    balances,
     activity,
     loadWallet,
     loadBalance,

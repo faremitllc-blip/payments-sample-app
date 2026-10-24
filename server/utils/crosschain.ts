@@ -254,3 +254,69 @@ export async function advanceBridge(userId: string, transferId: string): Promise
     }
   }
 }
+
+export interface WalletBalance {
+  blockchain: string
+  label: string
+  address: string
+  usdc: string
+}
+
+const NETWORK_LABELS: Record<string, string> = {
+  MATIC: 'Polygon',
+  ETH: 'Ethereum',
+  BASE: 'Base',
+  ARB: 'Arbitrum',
+  AVAX: 'Avalanche',
+  OP: 'OP Mainnet',
+  'MATIC-AMOY': 'Polygon Amoy',
+  'ETH-SEPOLIA': 'Ethereum Sepolia',
+  'BASE-SEPOLIA': 'Base Sepolia',
+  'ARB-SEPOLIA': 'Arbitrum Sepolia',
+  'AVAX-FUJI': 'Avalanche Fuji',
+  'OP-SEPOLIA': 'OP Sepolia',
+}
+
+/**
+ * USDC in every wallet the user has (the main one first), fetched at the same
+ * time. A wallet whose balance cannot be read is skipped rather than failing
+ * the whole screen. `total` adds them all up.
+ */
+export async function allUsdcBalances(
+  userId: string,
+  mainWallet?: { circle_wallet_id: string; blockchain: string; address: string } | null,
+): Promise<{ wallets: WalletBalance[]; total: string }> {
+  const list = await userNetworkWallets(userId)
+  if (mainWallet && !list.some((w) => w.blockchain === mainWallet.blockchain)) {
+    list.unshift({
+      blockchain: mainWallet.blockchain,
+      circleWalletId: mainWallet.circle_wallet_id,
+      address: mainWallet.address,
+    })
+  }
+  const results = await Promise.all(
+    list.map(async (w) => {
+      try {
+        const balances = await getBalances(w.circleWalletId)
+        const usdc = balances.find((b) => isUsdc(b))
+        return { w, amount: usdc ? usdc.amount : '0' }
+      } catch {
+        return null
+      }
+    }),
+  )
+  const wallets: WalletBalance[] = []
+  let micro = 0
+  for (const r of results) {
+    if (!r) continue
+    const n = Number(r.amount)
+    micro += Number.isFinite(n) ? Math.round(n * 1_000_000) : 0
+    wallets.push({
+      blockchain: r.w.blockchain,
+      label: NETWORK_LABELS[r.w.blockchain] || r.w.blockchain,
+      address: r.w.address,
+      usdc: r.amount,
+    })
+  }
+  return { wallets, total: (micro / 1_000_000).toFixed(6).replace(/\.?0+$/, '') || '0' }
+}

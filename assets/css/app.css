@@ -2569,3 +2569,12 @@ html[data-mo-theme='light'] .fm .fm-band {
     flex-direction: column-reverse;
   }
 }
+
+.mo-wallet-split {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 6px 0 0;
+  font-size: 0.8rem;
+  opacity: 0.85;
+}

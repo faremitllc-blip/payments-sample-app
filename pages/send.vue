@@ -30,7 +30,7 @@
 
     <template v-else>
       <p class="fm-balance-label">
-        Available: <strong>{{ formatUsdc(usdc) }} USDC</strong>
+        Available: <strong>{{ formatUsdc(mainUsdc) }} USDC</strong>
       </p>
 
       <v-alert
@@ -125,7 +125,7 @@ useHead({ title: 'Send USDC' })
 const { api } = useAuth()
 const { mode, loadMode } = useAppMode()
 loadMode()
-const { wallet, usdc, loadWallet, loadBalance } = useWallet()
+const { wallet, mainUsdc, loadWallet, loadBalance } = useWallet()
 
 const loading = ref(true)
 const to = ref('')
@@ -162,7 +162,7 @@ function review() {
     error.value = 'Enter an amount greater than 0, with up to 6 decimals.'
     return
   }
-  if (Number(value) > Number(usdc.value)) {
+  if (Number(value) > Number(mainUsdc.value)) {
     error.value = 'Your balance is too low for this amount.'
     return
   }
