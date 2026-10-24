@@ -37,6 +37,9 @@ const NETWORK_NAMES: Record<string, string> = {
   ARB: 'Arbitrum',
   AVAX: 'Avalanche',
   OP: 'Optimism',
+  UNI: 'Unichain',
+  MONAD: 'Monad',
+  ARC: 'Arc',
 }
 
 export function networkName(blockchain: string): string {

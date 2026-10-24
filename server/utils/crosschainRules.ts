@@ -64,6 +64,28 @@ export const BRIDGE_NETWORKS: BridgeNetwork[] = [
     usdc: '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85',
     explorerTx: 'https://optimistic.etherscan.io/tx/',
   },
+  {
+    circle: 'UNI',
+    label: 'Unichain',
+    domain: 10,
+    usdc: '0x078D782b760474a361dDA0AF3839290b0EF57AD6',
+    explorerTx: 'https://uniscan.xyz/tx/',
+  },
+  {
+    circle: 'MONAD',
+    label: 'Monad',
+    domain: 15,
+    usdc: '0x754704Bc059F8C67012fEd69BC8A327a5aafb603',
+    explorerTx: 'https://monadscan.com/tx/',
+  },
+  {
+    circle: 'ARC',
+    label: 'Arc',
+    domain: 26,
+    usdc: '0x3600000000000000000000000000000000000000',
+    // No public mainnet explorer link is set yet, so no "view" link is shown.
+    explorerTx: '',
+  },
 ]
 
 /** Bridging uses real mainnets only. Test keys get an empty list. */
@@ -213,7 +235,7 @@ export function stepsView(
   const order: Phase[] = ['approve', 'burn', 'attest', 'mint']
   const idx = state.phase === 'done' ? 4 : order.indexOf(state.phase)
   const link = (n: BridgeNetwork | null, ref?: TxRef) =>
-    n && ref?.hash ? `${n.explorerTx}${ref.hash}` : undefined
+    n && n.explorerTx && ref?.hash ? `${n.explorerTx}${ref.hash}` : undefined
   const names: Record<string, string> = {
     approve: `Approve USDC on ${from?.label || 'source'}`,
     burn: `Burn USDC on ${from?.label || 'source'}`,
