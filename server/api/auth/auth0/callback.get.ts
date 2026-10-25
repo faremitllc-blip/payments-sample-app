@@ -8,9 +8,9 @@ import {
 } from '../../../utils/auth0'
 import { rateLimit } from '../../../utils/auth'
 
-function fail(event: any, code: string) {
+function fail(event: any, code: string, extra = '') {
   deleteCookie(event, AUTH0_COOKIE, { path: '/api/auth/auth0' })
-  return sendRedirect(event, `/login?error=${encodeURIComponent(code)}`, 302)
+  return sendRedirect(event, `/login?error=${encodeURIComponent(code)}${extra}`, 302)
 }
 
 // Step 2: Auth0 sends the person back here with a one-time code. We swap it for
@@ -49,7 +49,8 @@ export default defineEventHandler(async (event) => {
       },
     })
     idToken = tokens.id_token || ''
-  } catch {
+  } catch (err: any) {
+    console.error('auth0 token exchange failed', err?.statusCode, err?.data?.error, err?.data?.error_description)
     return await fail(event, 'google_exchange')
   }
 
@@ -63,27 +64,55 @@ export default defineEventHandler(async (event) => {
   const serviceKey = String(config.supabaseServiceRoleKey || '')
   if (!baseUrl || !anonKey || !serviceKey) return await fail(event, 'google_server')
 
+  const why = (stage: string, err: any) => {
+    const status = err?.statusCode || err?.status || 0
+    console.error(`supabase ${stage} failed`, status, err?.data?.msg || err?.data?.message || err?.message)
+    return fail(
+      event,
+      'google_session',
+      `&stage=${encodeURIComponent(stage)}&status=${encodeURIComponent(String(status))}`,
+    )
+  }
+
+  let link: any
   try {
-    const link = await $fetch<any>(`${baseUrl}/auth/v1/admin/generate_link`, {
+    link = await $fetch<any>(`${baseUrl}/auth/v1/admin/generate_link`, {
       method: 'POST',
       headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
       body: { type: 'magiclink', email: checked.email },
     })
-    let tokenHash = typeof link?.hashed_token === 'string' ? link.hashed_token : ''
-    if (!tokenHash && typeof link?.action_link === 'string') {
+  } catch (err: any) {
+    return await why('link', err)
+  }
+  let tokenHash = typeof link?.hashed_token === 'string' ? link.hashed_token : ''
+  if (!tokenHash && typeof link?.action_link === 'string') {
+    try {
       tokenHash = new URL(link.action_link).searchParams.get('token') || ''
+    } catch {
+      tokenHash = ''
     }
-    if (!tokenHash) return await fail(event, 'google_session')
+  }
+  if (!tokenHash) return await why('hash', {})
 
-    const session = await $fetch<any>(`${baseUrl}/auth/v1/verify`, {
-      method: 'POST',
-      headers: { apikey: anonKey },
-      body: { type: 'magiclink', token_hash: tokenHash },
-    })
-    if (!session?.access_token || !session?.refresh_token) {
-      return await fail(event, 'google_session')
+  // Newer Supabase versions call this type "email"; older ones "magiclink".
+  let session: any = null
+  let lastErr: any = null
+  for (const type of ['email', 'magiclink']) {
+    try {
+      session = await $fetch<any>(`${baseUrl}/auth/v1/verify`, {
+        method: 'POST',
+        headers: { apikey: anonKey },
+        body: { type, token_hash: tokenHash },
+      })
+      if (session?.access_token && session?.refresh_token) break
+      session = null
+    } catch (err: any) {
+      lastErr = err
     }
+  }
+  if (!session) return await why('verify', lastErr || {})
 
+  {
     deleteCookie(event, AUTH0_COOKIE, { path: '/api/auth/auth0' })
     // Tokens go in the URL fragment, which browsers never send to any server.
     const frag = new URLSearchParams({
@@ -94,7 +123,5 @@ export default defineEventHandler(async (event) => {
     })
     const next = encodeURIComponent(safeNext(saved.next))
     return await sendRedirect(event, `/auth/complete?next=${next}#${frag.toString()}`, 302)
-  } catch {
-    return await fail(event, 'google_session')
   }
 })

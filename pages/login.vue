@@ -84,10 +84,15 @@ const GOOGLE_ERRORS: Record<string, string> = {
   google_off: 'Google login is not switched on yet.',
   google_cancelled: 'Google login was cancelled.',
   google_email_not_verified: 'Your Google email is not verified, so it cannot be used.',
+  google_state: 'The login took too long or was opened in another browser. Please try again.',
+  google_exchange: 'Auth0 refused the login. The Auth0 client secret or callback address on the server may be wrong.',
+  google_server: 'The server is missing its Supabase service key, so Google login cannot create your session.',
+  google_session: 'Google login worked, but Mondo could not start your session.',
 }
 if (typeof route.query.error === 'string') {
   error.value =
-    GOOGLE_ERRORS[route.query.error] || 'Google login did not work. Please try again.'
+    (GOOGLE_ERRORS[route.query.error] || 'Google login did not work. Please try again.') +
+    ` (code: ${route.query.error}${typeof route.query.stage === 'string' ? `, step: ${route.query.stage}, status: ${route.query.status}` : ''})`
 }
 
 async function submit() {
