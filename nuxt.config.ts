@@ -103,6 +103,11 @@ export default defineNuxtConfig({
 
     // Whether the bridging packages are installed (set at build time).
 
+    // Auth0, used for "Continue with Google" (server only)
+    auth0Domain: process.env.AUTH0_DOMAIN || '',
+    auth0ClientId: process.env.AUTH0_CLIENT_ID || '',
+    auth0ClientSecret: process.env.AUTH0_CLIENT_SECRET || '',
+
     // Supabase service role key (server only)
     supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
 
@@ -111,6 +116,12 @@ export default defineNuxtConfig({
       // The Supabase URL and anon key are designed to be public
       supabaseUrl: process.env.SUPABASE_URL || '',
       supabaseAnonKey: process.env.SUPABASE_ANON_KEY || '',
+      // Shows the Google button when Auth0 is set up.
+      googleLogin: Boolean(
+        process.env.AUTH0_DOMAIN &&
+          process.env.AUTH0_CLIENT_ID &&
+          process.env.AUTH0_CLIENT_SECRET,
+      ),
     },
   },
 

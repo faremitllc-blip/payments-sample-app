@@ -225,3 +225,19 @@ The page asks the server to advance the bridge every 6 seconds while it is open,
 **Rules:** mainnet only (Ethereum, Base, Polygon, Arbitrum, Avalanche, OP Mainnet) and live Circle keys only; the destination is always the user's own wallet; 1 USDC up to `MAX_SEND_USDC`; one bridge at a time. Each wallet needs a little of its own network's gas token (for example POL on Polygon, ETH on Base). Contract addresses, domain ids and USDC addresses are in `server/utils/crosschainRules.ts` and come from Circle's documentation.
 
 Delete these from GitHub if still there: `pages/buy.vue`, `server/api/onramp/`, `server/utils/onramp.ts`, `utils/globe.ts`, `public/globe/`, `stubs/`.
+
+## Google login through Auth0 (v44)
+
+"Continue with Google" appears on the Log in and Sign up pages once the three Auth0 settings below are set. It works like this: the button sends the person to Auth0, which sends them to Google. Auth0 returns to `/api/auth/auth0/callback`, the server swaps the one-time code for the person's verified email, then starts a normal Mondo session for that email (the account is created on first use, or an existing account with the same email is used). The rest of the app is unchanged.
+
+**In Vercel (Production), add:** `AUTH0_DOMAIN`, `AUTH0_CLIENT_ID`, `AUTH0_CLIENT_SECRET`. The secret is never put in the code. `SUPABASE_SERVICE_ROLE_KEY` must already be set. Redeploy with the build cache unticked.
+
+**In the Auth0 dashboard, on the application's Settings:**
+- Allowed Callback URLs: `https://getmondo.vercel.app/api/auth/auth0/callback` (add one line for every address the site uses, such as `https://mondo.vercel.app/...` and `https://getmondoapp.com/...`).
+- Allowed Web Origins: the same sites without the path.
+- Under Authentication, enable the Google social connection for this application.
+- Application type: Regular Web Application.
+
+Auth0's built-in Google keys are for testing only. Add your own Google OAuth client in Auth0 before real users use it.
+
+Only emails Google has verified are accepted. The Google button is hidden when the settings are missing.

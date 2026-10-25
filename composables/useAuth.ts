@@ -223,5 +223,15 @@ export function useAuth() {
     }
   }
 
-  return { session, load, signUp, signIn, signOut, refresh, api }
+  /** Stores a session that was started by "Continue with Google". */
+  function completeLogin(result: any): boolean {
+    const next = toSession(result)
+    if (!next) {
+      return false
+    }
+    setSession(next)
+    return true
+  }
+
+  return { session, load, signUp, signIn, signOut, refresh, api, completeLogin }
 }

@@ -45,6 +45,8 @@
         </v-btn>
       </v-form>
 
+      <GoogleButton :next="nextPath()" />
+
       <p class="mt-6">
         New here? <NuxtLink to="/signup">Create an account</NuxtLink>
       </p>
@@ -77,6 +79,16 @@ const password = ref('')
 const showPassword = ref(false)
 const busy = ref(false)
 const error = ref('')
+
+const GOOGLE_ERRORS: Record<string, string> = {
+  google_off: 'Google login is not switched on yet.',
+  google_cancelled: 'Google login was cancelled.',
+  google_email_not_verified: 'Your Google email is not verified, so it cannot be used.',
+}
+if (typeof route.query.error === 'string') {
+  error.value =
+    GOOGLE_ERRORS[route.query.error] || 'Google login did not work. Please try again.'
+}
 
 async function submit() {
   error.value = ''

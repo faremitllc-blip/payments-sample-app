@@ -58,6 +58,8 @@
         </v-btn>
       </v-form>
 
+      <GoogleButton />
+
       <p class="mt-6">
         Already have an account? <NuxtLink to="/login">Log in</NuxtLink>
       </p>
