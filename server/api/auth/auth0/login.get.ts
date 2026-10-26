@@ -8,7 +8,9 @@ export default defineEventHandler(async (event) => {
   }
   const state = randomToken()
   const nonce = randomToken()
-  const next = safeNext(getQuery(event).next)
+  const query = getQuery(event)
+  const next = safeNext(query.next)
+  const apple = query.provider === 'apple'
 
   setCookie(event, AUTH0_COOKIE, JSON.stringify({ state, nonce, next }), {
     httpOnly: true,
@@ -25,7 +27,9 @@ export default defineEventHandler(async (event) => {
   url.searchParams.set('scope', 'openid profile email')
   url.searchParams.set('state', state)
   url.searchParams.set('nonce', nonce)
-  url.searchParams.set('connection', 'google-oauth2')
-  url.searchParams.set('prompt', 'select_account')
+  url.searchParams.set('connection', apple ? 'apple' : 'google-oauth2')
+  if (!apple) {
+    url.searchParams.set('prompt', 'select_account')
+  }
   return await sendRedirect(event, url.toString(), 302)
 })

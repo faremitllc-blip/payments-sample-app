@@ -52,7 +52,7 @@ export interface IdClaims {
   exp?: number
   nonce?: string
   email?: string
-  email_verified?: boolean
+  email_verified?: boolean | string
   name?: string
 }
 
@@ -83,6 +83,6 @@ export function checkClaims(
   if (!aud.includes(settings.clientId)) return { ok: false, reason: 'bad_audience' }
   if (!claims.exp || claims.exp < nowSeconds) return { ok: false, reason: 'expired' }
   if (!nonce || claims.nonce !== nonce) return { ok: false, reason: 'bad_nonce' }
-  if (!claims.email || claims.email_verified !== true) return { ok: false, reason: 'email_not_verified' }
+  if (!claims.email || claims.email_verified !== true && claims.email_verified !== 'true') return { ok: false, reason: 'email_not_verified' }
   return { ok: true, email: claims.email.trim().toLowerCase() }
 }
