@@ -93,7 +93,7 @@ const GOOGLE_ERRORS: Record<string, string> = {
 if (typeof route.query.error === 'string') {
   error.value =
     (GOOGLE_ERRORS[route.query.error] || 'Login did not work. Please try again.') +
-    ` (code: ${route.query.error}${typeof route.query.stage === 'string' ? `, step: ${route.query.stage}, status: ${route.query.status}` : ''})`
+    ` (code: ${route.query.error}${typeof route.query.idp === 'string' ? `, provider: ${route.query.idp}, fields: ${route.query.fields}` : ''}${typeof route.query.stage === 'string' ? `, step: ${route.query.stage}, status: ${route.query.status}` : ''})`
 }
 
 async function submit() {

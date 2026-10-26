@@ -37,8 +37,9 @@ export default defineEventHandler(async (event) => {
   }
 
   let idToken = ''
+  let accessToken = ''
   try {
-    const tokens = await $fetch<{ id_token?: string }>(`https://${settings.domain}/oauth/token`, {
+    const tokens = await $fetch<{ id_token?: string; access_token?: string }>(`https://${settings.domain}/oauth/token`, {
       method: 'POST',
       body: {
         grant_type: 'authorization_code',
@@ -49,13 +50,44 @@ export default defineEventHandler(async (event) => {
       },
     })
     idToken = tokens.id_token || ''
+    accessToken = tokens.access_token || ''
   } catch (err: any) {
     console.error('auth0 token exchange failed', err?.statusCode, err?.data?.error, err?.data?.error_description)
     return await fail(event, 'google_exchange')
   }
 
-  const checked = checkClaims(decodeJwtPayload(idToken), settings, saved.nonce)
-  if (!checked.ok) return await fail(event, `google_${checked.reason}`)
+  let claims = decodeJwtPayload(idToken)
+  // Some logins (Apple, mostly) leave the email out of the ID token. Ask Auth0's
+  // userinfo endpoint, which uses the profile Auth0 holds for the person.
+  if (claims && !claims.email && accessToken) {
+    try {
+      const info = await $fetch<any>(`https://${settings.domain}/userinfo`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+      if (info && typeof info.email === 'string' && info.email) {
+        claims = {
+          ...claims,
+          email: info.email,
+          email_verified: info.email_verified,
+          sub: claims.sub || info.sub,
+        }
+      }
+    } catch {
+      // Fall through: the check below reports the missing email.
+    }
+  }
+
+  const checked = checkClaims(claims, settings, saved.nonce)
+  if (!checked.ok) {
+    // Report which fields the login had (names only, never values) to help fix setup.
+    const keys = claims ? Object.keys(claims).filter((k) => /^[a-z_]+$/.test(k)).slice(0, 20).join(',') : ''
+    const idp = typeof claims?.sub === 'string' ? claims.sub.split('|')[0].slice(0, 20) : ''
+    return await fail(
+      event,
+      `google_${checked.reason}`,
+      `&idp=${encodeURIComponent(idp)}&fields=${encodeURIComponent(keys)}`,
+    )
+  }
 
   // Start a Supabase session for this verified email (created on first use).
   const config = useRuntimeConfig()
