@@ -84,6 +84,7 @@ const GOOGLE_ERRORS: Record<string, string> = {
   google_off: 'Google and Apple login are not switched on yet.',
   google_cancelled: 'The login was cancelled.',
   google_email_not_verified: 'Your email was not shared or is not verified, so it cannot be used.',
+  google_no_email: 'Apple did not share your email. Go to appleid.apple.com, open Sign-In and Security, then Sign in with Apple, choose Mondo and tap Stop using Sign in with Apple. Then try again and keep Share My Email or Hide My Email selected.',
   google_state: 'The login took too long or was opened in another browser. Please try again.',
   google_exchange: 'Auth0 refused the login. The Auth0 client secret or callback address on the server may be wrong.',
   google_server: 'The server is missing its Supabase service key, so Google login cannot create your session.',

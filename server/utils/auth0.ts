@@ -52,6 +52,7 @@ export interface IdClaims {
   exp?: number
   nonce?: string
   email?: string
+  sub?: string
   email_verified?: boolean | string
   name?: string
 }
@@ -83,6 +84,14 @@ export function checkClaims(
   if (!aud.includes(settings.clientId)) return { ok: false, reason: 'bad_audience' }
   if (!claims.exp || claims.exp < nowSeconds) return { ok: false, reason: 'expired' }
   if (!nonce || claims.nonce !== nonce) return { ok: false, reason: 'bad_nonce' }
-  if (!claims.email || claims.email_verified !== true && claims.email_verified !== 'true') return { ok: false, reason: 'email_not_verified' }
+  if (!claims.email) return { ok: false, reason: 'no_email' }
+  // Apple only ever gives out emails it has verified, and Auth0 sometimes leaves
+  // the "verified" flag out for Apple, so a missing flag is accepted for Apple only.
+  const isApple = typeof claims.sub === 'string' && claims.sub.startsWith('apple|')
+  const verified =
+    claims.email_verified === true ||
+    claims.email_verified === 'true' ||
+    (isApple && claims.email_verified === undefined)
+  if (!verified) return { ok: false, reason: 'email_not_verified' }
   return { ok: true, email: claims.email.trim().toLowerCase() }
 }
