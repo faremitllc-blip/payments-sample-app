@@ -29,8 +29,17 @@
     </div>
 
     <template v-else>
+      <label v-if="sources.length > 1" class="mo-send-from">
+        <span>Send from</span>
+        <select v-model="from">
+          <option v-for="w in sources" :key="w.blockchain" :value="w.blockchain">
+            {{ w.label }} — {{ formatUsdc(w.usdc) }} USDC
+          </option>
+        </select>
+      </label>
       <p class="fm-balance-label">
-        Available: <strong>{{ formatUsdc(mainUsdc) }} USDC</strong>
+        Available<template v-if="selected"> on {{ selected.label }}</template>:
+        <strong>{{ formatUsdc(availableUsdc) }} USDC</strong>
       </p>
 
       <v-alert
@@ -85,7 +94,7 @@
           </div>
           <div class="fm-slip-row">
             <span>Network</span>
-            <span>{{ wallet ? networkName(wallet.blockchain) : '' }}</span>
+            <span>{{ selected ? selected.label : wallet ? networkName(wallet.blockchain) : '' }}</span>
           </div>
         </div>
         <p class="fm-notice">
@@ -125,7 +134,7 @@ useHead({ title: 'Send USDC' })
 const { api } = useAuth()
 const { mode, loadMode } = useAppMode()
 loadMode()
-const { wallet, mainUsdc, loadWallet, loadBalance } = useWallet()
+const { wallet, mainUsdc, balances, loadWallet, loadBalance } = useWallet()
 
 const loading = ref(true)
 const to = ref('')
@@ -141,7 +150,28 @@ const sentAmount = ref('')
 // One id per transfer attempt. If a request is retried, Circle sees the same
 // id and does not send the money twice. It changes when the details change.
 const requestId = ref(crypto.randomUUID())
-watch([to, amount], () => {
+
+// Which of the user's wallets to send from (a Circle blockchain id).
+const from = ref('')
+const sources = computed(() => balances.value.filter((b) => b.address))
+const selected = computed(
+  () => sources.value.find((w) => w.blockchain === from.value) || null,
+)
+const availableUsdc = computed(() => (selected.value ? selected.value.usdc : mainUsdc.value))
+
+// Start with the main wallet, or the fullest one if the main wallet is empty.
+watch(
+  sources,
+  (list) => {
+    if (list.some((w) => w.blockchain === from.value)) return
+    const main = wallet.value ? list.find((w) => w.blockchain === wallet.value!.blockchain) : null
+    const fullest = [...list].sort((a, b) => Number(b.usdc) - Number(a.usdc))[0]
+    from.value = (main && Number(main.usdc) > 0 ? main : fullest || main)?.blockchain || ''
+  },
+  { immediate: true },
+)
+
+watch([to, amount, from], () => {
   requestId.value = crypto.randomUUID()
 })
 
@@ -162,7 +192,7 @@ function review() {
     error.value = 'Enter an amount greater than 0, with up to 6 decimals.'
     return
   }
-  if (Number(value) > Number(mainUsdc.value)) {
+  if (Number(value) > Number(availableUsdc.value)) {
     error.value = 'Your balance is too low for this amount.'
     return
   }
@@ -181,6 +211,7 @@ async function send() {
         to: to.value.trim(),
         amount: amount.value.trim(),
         requestId: requestId.value,
+        from: from.value || undefined,
       },
     })
     sentTo.value = to.value.trim()
@@ -213,3 +244,28 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style scoped>
+.mo-send-from {
+  display: block;
+  margin: 8px 0 12px;
+}
+.mo-send-from span {
+  display: block;
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+  opacity: 0.8;
+}
+.mo-send-from select {
+  width: 100%;
+  padding: 14px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(128, 128, 128, 0.5);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+.mo-send-from select option {
+  color: #111;
+}
+</style>

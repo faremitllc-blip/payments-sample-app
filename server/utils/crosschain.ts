@@ -3,6 +3,7 @@ import {
   getBalances,
   getTransactionStatus,
   isUsdc,
+  listTransactions,
   uuidFromSeed,
   circleSettings,
 } from './circle'
@@ -322,4 +323,36 @@ export async function allUsdcBalances(
     })
   }
   return { wallets, total: (micro / 1_000_000).toFixed(6).replace(/\.?0+$/, '') || '0' }
+}
+
+/**
+ * Recent transfers from every wallet the user has, newest first. Contract calls
+ * made by bridging (approve, burn, mint) carry no amount and are left out.
+ */
+export async function allTransactions(
+  userId: string,
+  mainWallet?: { circle_wallet_id: string; blockchain: string; address: string } | null,
+) {
+  const list = await userNetworkWallets(userId)
+  if (mainWallet && !list.some((w) => w.blockchain === mainWallet.blockchain)) {
+    list.unshift({
+      blockchain: mainWallet.blockchain,
+      circleWalletId: mainWallet.circle_wallet_id,
+      address: mainWallet.address,
+    })
+  }
+  const lists = await Promise.all(
+    list.map(async (w) => {
+      try {
+        return await listTransactions(w.circleWalletId)
+      } catch {
+        return []
+      }
+    }),
+  )
+  return lists
+    .flat()
+    .filter((t) => t.amounts && t.amounts.length > 0)
+    .sort((a, b) => String(b.createDate || '').localeCompare(String(a.createDate || '')))
+    .slice(0, 50)
 }

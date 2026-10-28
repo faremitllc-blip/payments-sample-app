@@ -1,7 +1,7 @@
 import { requireUser } from '../utils/auth'
 import { toActivityItems } from '../utils/activity'
-import { getBalances, isUsdc, listTransactions } from '../utils/circle'
-import { allUsdcBalances } from '../utils/crosschain'
+import { getBalances, isUsdc } from '../utils/circle'
+import { allTransactions, allUsdcBalances } from '../utils/crosschain'
 import { getWalletRow } from '../utils/db'
 
 // Everything the home screen needs in one trip: the wallet, its USDC balance
@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
 
   const [balances, items, all] = await Promise.all([
     getBalances(wallet.circle_wallet_id),
-    listTransactions(wallet.circle_wallet_id),
+    allTransactions(user.id, wallet),
     allUsdcBalances(user.id, wallet),
   ])
   const usdc = balances.find(isUsdc)
