@@ -94,6 +94,7 @@ const mainItems = [
   { to: '/send', label: 'Send', icon: 'mdi-arrow-top-right' },
   { to: '/receive', label: 'Receive', icon: 'mdi-arrow-bottom-left' },
   { to: '/bridge', label: 'Bridge', icon: 'mdi-swap-horizontal' },
+  { to: '/properties', label: 'Properties', icon: 'mdi-home-city-outline' },
   { to: '/bank', label: 'Bank', icon: 'mdi-bank-outline' },
   { to: '/activity', label: 'Activity', icon: 'mdi-receipt-text-outline' },
 ]
@@ -110,6 +111,7 @@ const titles: Record<string, string> = {
   '/send': 'Send',
   '/receive': 'Receive',
   '/bridge': 'Bridge USDC',
+  '/properties': 'Properties',
   '/bank': 'Bank accounts',
   '/activity': 'Activity',
   '/profile': 'Profile',

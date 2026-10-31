@@ -103,6 +103,13 @@ export default defineNuxtConfig({
 
     // Whether the bridging packages are installed (set at build time).
 
+    // Property pool (pooled property investments). Server only.
+    propertyPoolAddress: process.env.PROPERTY_POOL_ADDRESS || '',
+    propertyPoolChain: process.env.PROPERTY_POOL_CHAIN || 'MATIC',
+    maxInvestUsdc: process.env.MAX_INVEST_USDC || '',
+    allowLiveProperties: process.env.ALLOW_LIVE_PROPERTIES || '',
+    adminEmails: process.env.ADMIN_EMAILS || '',
+
     // Auth0, used for "Continue with Google" (server only)
     auth0Domain: process.env.AUTH0_DOMAIN || '',
     auth0ClientId: process.env.AUTH0_CLIENT_ID || '',

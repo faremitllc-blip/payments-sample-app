@@ -241,3 +241,20 @@ Delete these from GitHub if still there: `pages/buy.vue`, `server/api/onramp/`, 
 Auth0's built-in Google keys are for testing only. Add your own Google OAuth client in Auth0 before real users use it.
 
 Only emails Google has verified are accepted. The Google button is hidden when the settings are missing.
+
+## Pooled property investments (v53)
+
+People pool USDC to fund a property through a smart contract (`contracts/src/PropertyPool.sol`), then share rent and sale profit by percentage. The **Properties** pages list properties, take investments from the user's own Circle wallet and let them claim payouts or get a refund if a property misses its target.
+
+**Before anything is switched on, read `contracts/README.md`.** The contract has not been compiled, tested or audited, and selling property shares is normally regulated. Nothing works until you deploy the contract and set the address below.
+
+**Setup**
+1. Run `supabase/add-properties.sql` in the Supabase SQL Editor.
+2. Deploy and audit the contract (see `contracts/README.md`), then create a property on it.
+3. In Vercel (Production) add: `PROPERTY_POOL_ADDRESS` (the deployed contract), `PROPERTY_POOL_CHAIN` (Circle network id, default `MATIC`), `ADMIN_EMAILS` (comma separated, who can list properties), `MAX_INVEST_USDC` (cap per investment, default is your `MAX_SEND_USDC`), and, because you use live keys, `ALLOW_LIVE_PROPERTIES` = `true`.
+4. Redeploy with the build cache unticked. An admin signs in, opens **Properties** and lists the property with its contract number and description.
+5. Each investor needs a wallet on the pool's network with USDC in it (use **Bridge**). Your Gas Station policy for that network pays for the approve and invest steps.
+
+**How an investment works.** Two on-chain steps: approve USDC for the contract, then `invest`. The page moves it along every 6 seconds. A property fills to exactly its target, so the last investor can only take what is left. If the target is missed by the deadline, or the owner cancels, everyone presses **Get my USDC back**.
+
+**What the app does not do.** It does not run `release`, `distribute` or `createProperty`: do those from the owner multisig. It does not hold title deeds, and shares cannot be traded between users yet.
