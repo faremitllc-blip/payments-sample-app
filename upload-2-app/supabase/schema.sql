@@ -1,0 +1,85 @@
+-- Run this once in the Supabase dashboard: SQL Editor -> New query -> paste -> Run.
+
+-- One row per user: which Circle wallet belongs to them.
+create table if not exists public.wallets (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  circle_wallet_id text not null unique,
+  address text not null,
+  blockchain text not null,
+  created_at timestamptz not null default now()
+);
+
+-- Small key/value table the server uses (for example, the Circle wallet set id).
+create table if not exists public.app_settings (
+  key text primary key,
+  value text not null
+);
+
+-- Lock both tables. With no policies, browsers cannot read or write them.
+-- Only the server, using the service role key, can.
+alter table public.wallets enable row level security;
+alter table public.app_settings enable row level security;
+
+-- ---------------------------------------------------------------------------
+-- Bank accounts (Bridge). Safe to run again: everything uses "if not exists".
+-- ---------------------------------------------------------------------------
+
+-- One row per user: their Bridge identity check.
+create table if not exists public.bank_customers (
+  user_id uuid primary key references auth.users (id) on delete cascade,
+  kyc_link_id text not null unique,
+  customer_id text,
+  customer_type text not null default 'individual',
+  created_at timestamptz not null default now()
+);
+
+-- One row per user per currency: their USD, EUR or GBP account details.
+create table if not exists public.bank_accounts (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  currency text not null check (currency in ('usd', 'eur', 'gbp')),
+  bridge_account_id text not null unique,
+  deposit_instructions jsonb not null,
+  created_at timestamptz not null default now(),
+  unique (user_id, currency)
+);
+
+alter table public.bank_customers enable row level security;
+alter table public.bank_accounts enable row level security;
+
+-- Test accounts can be opened before a wallet exists (Bridge sandbox only).
+-- This flag marks them until they are connected to the user's real wallet.
+alter table public.bank_accounts
+  add column if not exists placeholder boolean not null default false;
+
+-- One extra Circle wallet per user per network (the main wallet stays in "wallets").
+create table if not exists public.network_wallets (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  blockchain text not null,
+  circle_wallet_id text not null unique,
+  address text not null,
+  created_at timestamptz not null default now(),
+  primary key (user_id, blockchain)
+);
+
+-- Every bridge the user starts, with its progress.
+create table if not exists public.bridge_transfers (
+  id uuid primary key,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  from_chain text not null,
+  to_chain text not null,
+  amount text not null,
+  status text not null default 'running',
+  steps jsonb not null default '[]'::jsonb,
+  result jsonb,
+  error text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists bridge_transfers_user_idx
+  on public.bridge_transfers (user_id, created_at desc);
+
+-- Lock both tables. Only the server (service role key) can use them.
+alter table public.network_wallets enable row level security;
+alter table public.bridge_transfers enable row level security;
