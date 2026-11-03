@@ -97,9 +97,15 @@ export async function readSummary(pool: PoolSettings, onchainId: number | string
   const key = `prop-summary:${pool.address}:${onchainId}`
   const cached = memoGet<PropertySummary>(key)
   if (cached) return cached
-  const parsed = parseSummary(await queryContract(pool, 'summary(uint256)', [String(onchainId)]))
+  const raw = await queryContract(pool, 'summary(uint256)', [String(onchainId)])
+  const parsed = parseSummary(raw)
   if (!parsed) {
-    throw createError({ statusCode: 502, statusMessage: 'Could not read the property from the blockchain' })
+    // Contract data is public, so it is safe to show what came back to help fix this.
+    const seen = JSON.stringify(raw).slice(0, 160)
+    throw createError({
+      statusCode: 502,
+      statusMessage: `Could not read the property from the blockchain (got: ${seen})`,
+    })
   }
   memoSet(key, parsed, 10_000)
   return parsed

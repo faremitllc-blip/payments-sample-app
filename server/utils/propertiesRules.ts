@@ -16,8 +16,16 @@ export interface PropertySummary {
   distributed: string
 }
 
+/** Circle may return several values flat, or wrapped in one more array. Accept both. */
+export function flattenOutput(input: unknown): unknown[] | null {
+  if (!Array.isArray(input)) return null
+  if (input.length === 1 && Array.isArray(input[0])) return input[0] as unknown[]
+  return input
+}
+
 /** Turns the values the contract's summary() returned into a clean object. */
-export function parseSummary(values: unknown): PropertySummary | null {
+export function parseSummary(input: unknown): PropertySummary | null {
+  const values = flattenOutput(input)
   if (!Array.isArray(values) || values.length < 6) return null
   const num = (v: unknown) => (/^\d+$/.test(String(v)) ? String(v) : null)
   const status = Number(values[0])
@@ -39,7 +47,8 @@ export interface Position {
   claimed: string
 }
 
-export function parsePosition(values: unknown): Position | null {
+export function parsePosition(input: unknown): Position | null {
+  const values = flattenOutput(input)
   if (!Array.isArray(values) || values.length < 3) return null
   const ok = values.slice(0, 3).every((v) => /^\d+$/.test(String(v)))
   if (!ok) return null
