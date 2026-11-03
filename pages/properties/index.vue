@@ -15,6 +15,7 @@
         <div class="fm-empty">
           <h3>Not available yet</h3>
           <p>Property investing has not been switched on.</p>
+          <p v-if="data.reason" class="mo-muted">Reason: {{ data.reason }}</p>
         </div>
       </div>
 
@@ -108,6 +109,7 @@ const loading = ref(true)
 const error = ref('')
 const data = ref<{
   enabled: boolean
+  reason?: string
   admin: boolean
   poolChainLabel?: string
   properties: Listing[]
