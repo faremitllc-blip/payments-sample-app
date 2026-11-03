@@ -101,6 +101,10 @@ export function parseGeminiReply(reply: any, newId: () => string): GeminiTurn {
   return { blocks, raw: kept.length > 0 ? { role: 'model', parts: kept } : null }
 }
 
+// If the configured model has been shut down (Google retires models regularly),
+// these current ones are tried next, so the assistant keeps working.
+const FALLBACK_MODELS = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.1-flash-lite']
+
 export async function callGemini(options: {
   apiKey: string
   model: string
@@ -108,38 +112,50 @@ export async function callGemini(options: {
   messages: AgentMessage[]
   tools: unknown
 }): Promise<any> {
-  const model = options.model.replace(/^models\//, '')
-  try {
-    return await $fetch<any>(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-      {
-        method: 'POST',
-        headers: { 'x-goog-api-key': options.apiKey, 'content-type': 'application/json' },
-        body: {
-          systemInstruction: { parts: [{ text: options.system }] },
-          contents: toGeminiContents(options.messages),
-          tools: options.tools,
-          toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
-          generationConfig: { maxOutputTokens: 1200, temperature: 0.4 },
+  const first = options.model.replace(/^models\//, '')
+  const candidates = [first, ...FALLBACK_MODELS.filter((m) => m !== first)]
+  let lastDetail = ''
+  let lastStatus = 0
+
+  for (const model of candidates) {
+    try {
+      return await $fetch<any>(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+        {
+          method: 'POST',
+          headers: { 'x-goog-api-key': options.apiKey, 'content-type': 'application/json' },
+          body: {
+            systemInstruction: { parts: [{ text: options.system }] },
+            contents: toGeminiContents(options.messages),
+            tools: options.tools,
+            toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
+            generationConfig: { maxOutputTokens: 1200, temperature: 0.4 },
+          },
+          timeout: 45_000,
         },
-        timeout: 45_000,
-      },
-    )
-  } catch (err: any) {
-    console.error('Gemini request failed', err?.statusCode, err?.data?.error?.message || err?.message)
-    const status = Number(err?.statusCode) || 0
-    throw createError({
-      statusCode: 502,
-      statusMessage:
-        status === 401 || status === 403
-          ? 'The assistant key was not accepted. Check GEMINI_API_KEY'
-          : status === 404
-            ? 'The assistant model was not found. Check GEMINI_MODEL'
-            : status === 429 || status === 503
-              ? 'The assistant is busy right now. Please try again in a moment'
-              : status === 400
-                ? 'The assistant could not read the conversation. Start a new chat'
-                : 'The assistant could not answer right now',
-    })
+      )
+    } catch (err: any) {
+      lastStatus = Number(err?.statusCode) || 0
+      lastDetail = String(err?.data?.error?.message || err?.message || '').slice(0, 160)
+      console.error('Gemini request failed', model, lastStatus, lastDetail)
+      // Only a missing model is worth trying another model for.
+      if (lastStatus !== 404) break
+    }
   }
+
+  const status = lastStatus
+  const base =
+    status === 401 || status === 403
+      ? 'The assistant key was not accepted. Check GEMINI_API_KEY'
+      : status === 404
+        ? 'None of the assistant models were found. Set GEMINI_MODEL to a current model such as gemini-3.8-flash'
+        : status === 429 || status === 503
+          ? 'The assistant is busy right now. Please try again in a moment'
+          : status === 400
+            ? 'The assistant could not read the conversation. Start a new chat'
+            : 'The assistant could not answer right now'
+  throw createError({
+    statusCode: 502,
+    statusMessage: lastDetail ? `${base} (Google said: ${lastDetail})` : base,
+  })
 }

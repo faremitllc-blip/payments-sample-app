@@ -375,3 +375,94 @@ export async function getBridgeTransferResult(
   )
   return rows.length > 0 ? rows[0].result : null
 }
+
+// ---- Pooled property investments ----
+
+export interface PropertyRow {
+  id: string
+  onchain_id: number | string
+  title: string
+  location: string
+  description: string
+  image_url: string
+  expected_return: string
+  min_invest_usdc: number | string
+  created_at?: string
+}
+
+export interface PropertyInvestmentRow {
+  id: string
+  user_id: string
+  property_id: string
+  amount: string
+  status: string
+  state: unknown
+  error?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
+export async function listProperties(): Promise<PropertyRow[]> {
+  return await dbRequest<PropertyRow[]>('properties?select=*&order=created_at.desc&limit=100')
+}
+
+export async function getProperty(id: string): Promise<PropertyRow | null> {
+  const rows = await dbRequest<PropertyRow[]>(
+    `properties?id=eq.${encodeURIComponent(id)}&select=*&limit=1`,
+  )
+  return rows.length > 0 ? rows[0] : null
+}
+
+/** Returns the new row, or null when that on-chain id is already listed. */
+export async function createPropertyRow(
+  row: Omit<PropertyRow, 'id' | 'created_at'>,
+): Promise<PropertyRow | null> {
+  const rows = await dbRequest<PropertyRow[]>('properties', {
+    method: 'POST',
+    body: { ...row },
+    prefer: 'resolution=ignore-duplicates,return=representation',
+  })
+  return rows.length > 0 ? rows[0] : null
+}
+
+export async function createInvestmentRow(
+  row: Omit<PropertyInvestmentRow, 'created_at' | 'updated_at'>,
+): Promise<PropertyInvestmentRow | null> {
+  const rows = await dbRequest<PropertyInvestmentRow[]>('property_investments', {
+    method: 'POST',
+    body: { ...row },
+    prefer: 'resolution=ignore-duplicates,return=representation',
+  })
+  return rows.length > 0 ? rows[0] : null
+}
+
+export async function getInvestmentRow(
+  userId: string,
+  id: string,
+): Promise<PropertyInvestmentRow | null> {
+  const rows = await dbRequest<PropertyInvestmentRow[]>(
+    `property_investments?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}&select=*&limit=1`,
+  )
+  return rows.length > 0 ? rows[0] : null
+}
+
+export async function listInvestmentRows(
+  userId: string,
+  propertyId?: string,
+): Promise<PropertyInvestmentRow[]> {
+  const filter = propertyId ? `&property_id=eq.${encodeURIComponent(propertyId)}` : ''
+  return await dbRequest<PropertyInvestmentRow[]>(
+    `property_investments?user_id=eq.${encodeURIComponent(userId)}${filter}&select=*&order=created_at.desc&limit=50`,
+  )
+}
+
+export async function updateInvestmentRow(
+  id: string,
+  patch: Partial<Pick<PropertyInvestmentRow, 'status' | 'state' | 'error'>>,
+): Promise<void> {
+  await dbRequest<unknown>(`property_investments?id=eq.${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: { ...patch, updated_at: new Date().toISOString() },
+    prefer: 'return=minimal',
+  })
+}
