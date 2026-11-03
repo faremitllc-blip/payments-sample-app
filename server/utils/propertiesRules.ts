@@ -16,6 +16,34 @@ export interface PropertySummary {
   distributed: string
 }
 
+/**
+ * Decodes the raw answer of a contract call that returns only whole numbers and
+ * true/false values (each one is a 32-byte word). Used when Circle does not
+ * decode the answer for us.
+ */
+export function decodeWords(data: unknown, count: number): string[] | null {
+  if (typeof data !== 'string') return null
+  const hex = data.replace(/^0x/i, '')
+  if (hex.length < count * 64 || !/^[0-9a-fA-F]+$/.test(hex)) return null
+  const out: string[] = []
+  for (let i = 0; i < count; i++) {
+    out.push(BigInt('0x' + hex.slice(i * 64, (i + 1) * 64)).toString())
+  }
+  return out
+}
+
+/** summary(uint256) raw answer -> the same list parseSummary expects. */
+export function summaryFromData(data: unknown): unknown[] | null {
+  const w = decodeWords(data, 6)
+  if (!w) return null
+  return [w[0], w[1], w[2], w[3], w[4] !== '0', w[5]]
+}
+
+/** position(uint256,address) raw answer -> the same list parsePosition expects. */
+export function positionFromData(data: unknown): unknown[] | null {
+  return decodeWords(data, 3)
+}
+
 /** Circle may return several values flat, or wrapped in one more array. Accept both. */
 export function flattenOutput(input: unknown): unknown[] | null {
   if (!Array.isArray(input)) return null

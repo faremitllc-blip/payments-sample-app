@@ -18,7 +18,9 @@ import { memoGet, memoSet } from './memo'
 import {
   parsePosition,
   parseSummary,
+  positionFromData,
   readInvestState,
+  summaryFromData,
   txOutcome,
   usdcToMicroString,
   type InvestState,
@@ -72,12 +74,17 @@ export function poolSettings(): PoolSettings {
   }
 }
 
+interface QueryResult {
+  values: unknown[]
+  data: string
+}
+
 async function queryContract(
   pool: PoolSettings,
   signature: string,
   params: Array<string | number>,
-): Promise<unknown[]> {
-  const result = await circleRequest<{ data: { outputValues?: unknown[] } }>(
+): Promise<QueryResult> {
+  const result = await circleRequest<{ data: { outputValues?: unknown[]; outputData?: string } }>(
     '/v1/w3s/contracts/query',
     {
       method: 'POST',
@@ -89,7 +96,10 @@ async function queryContract(
       },
     },
   )
-  return result.data.outputValues || []
+  return {
+    values: result.data.outputValues || [],
+    data: result.data.outputData || '',
+  }
 }
 
 /** The contract's view of a property. Reused for 10 seconds to keep screens quick. */
@@ -98,10 +108,11 @@ export async function readSummary(pool: PoolSettings, onchainId: number | string
   const cached = memoGet<PropertySummary>(key)
   if (cached) return cached
   const raw = await queryContract(pool, 'summary(uint256)', [String(onchainId)])
-  const parsed = parseSummary(raw)
+  // Use Circle's decoded values when present, otherwise decode the raw answer.
+  const parsed = parseSummary(raw.values) || parseSummary(summaryFromData(raw.data))
   if (!parsed) {
     // Contract data is public, so it is safe to show what came back to help fix this.
-    const seen = JSON.stringify(raw).slice(0, 160)
+    const seen = JSON.stringify({ values: raw.values, data: raw.data }).slice(0, 220)
     throw createError({
       statusCode: 502,
       statusMessage: `Could not read the property from the blockchain (got: ${seen})`,
@@ -116,9 +127,8 @@ export async function readPosition(
   onchainId: number | string,
   address: string,
 ): Promise<Position> {
-  const parsed = parsePosition(
-    await queryContract(pool, 'position(uint256,address)', [String(onchainId), address]),
-  )
+  const raw = await queryContract(pool, 'position(uint256,address)', [String(onchainId), address])
+  const parsed = parsePosition(raw.values) || parsePosition(positionFromData(raw.data))
   if (!parsed) {
     throw createError({ statusCode: 502, statusMessage: 'Could not read your position from the blockchain' })
   }
