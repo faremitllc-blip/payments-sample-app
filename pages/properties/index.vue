@@ -78,6 +78,8 @@
             <PropertyPhotos v-model="form.images" />
             <v-text-field v-model="form.expectedReturn" label="Expected return (text shown to people)" />
             <v-text-field v-model="form.minInvestUsdc" label="Minimum investment (USDC)" inputmode="decimal" />
+            <v-text-field v-model="form.maxInvestUsdc" label="Maximum per investment (USDC, optional)" inputmode="decimal" />
+            <v-text-field v-model="form.propertyPriceUsdc" label="Full property price (USDC, optional)" inputmode="decimal" />
             <v-select v-model="form.stage" :items="[...PROPERTY_STAGES]" label="Project stage" clearable />
             <v-btn type="submit" color="primary" variant="flat" :loading="adminBusy">List property</v-btn>
           </v-form>
@@ -128,6 +130,8 @@ const form = reactive({
   stage: '' as string | null,
   expectedReturn: '',
   minInvestUsdc: '10',
+  maxInvestUsdc: '',
+  propertyPriceUsdc: '',
 })
 const adminBusy = ref(false)
 const adminMsg = ref('')
@@ -167,6 +171,8 @@ async function createListing() {
         stage: form.stage || '',
         expectedReturn: form.expectedReturn,
         minInvestUsdc: Number(form.minInvestUsdc),
+        maxInvestUsdc: form.maxInvestUsdc,
+        propertyPriceUsdc: form.propertyPriceUsdc,
       },
     })
     adminOk.value = true

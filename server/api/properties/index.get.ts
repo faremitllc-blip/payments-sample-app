@@ -43,6 +43,7 @@ export default defineEventHandler(async (event) => {
         stage: p.stage || '',
         expectedReturn: p.expected_return,
         minInvestUsdc: Number(p.min_invest_usdc),
+        propertyPriceUsdc: p.property_price_usdc ? Number(p.property_price_usdc) : null,
         chain,
       }
     }),

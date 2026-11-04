@@ -54,6 +54,9 @@
           Status: <strong>{{ statusText }}</strong>
           <template v-if="d.chain.status === 'open'"> · closes {{ deadlineText }}</template>
         </p>
+        <p v-if="d.property.propertyPriceUsdc" class="mo-muted">
+          Full property price: {{ fmt(String(d.property.propertyPriceUsdc)) }} USDC. This pool raises {{ fmt(d.chain.target) }} USDC of it.
+        </p>
         <p v-if="d.property.expectedReturn" class="mo-muted">{{ d.property.expectedReturn }}</p>
         <p v-if="Number(d.chain.distributed) > 0" class="mo-muted">
           Paid out to owners so far: {{ fmt(d.chain.distributed) }} USDC
@@ -106,7 +109,7 @@
             Your {{ d.pool.chainLabel }} wallet holds
             <strong>{{ d.wallet.balanceUsdc === null ? '—' : fmt(String(d.wallet.balanceUsdc)) }} USDC</strong>.
             Still open: {{ fmt(d.chain.remaining) }} USDC. Minimum {{ d.property.minInvestUsdc }} USDC,
-            maximum {{ d.pool.maxInvestUsdc }} USDC per investment.
+            maximum {{ d.property.maxInvestUsdc }} USDC per investment.
           </p>
           <v-alert v-if="investError" type="error" variant="tonal" class="my-3" role="alert">{{ investError }}</v-alert>
           <v-text-field v-model="amount" label="Amount (USDC)" inputmode="decimal" class="mt-3" :disabled="running" />
@@ -167,6 +170,20 @@
           <PropertyPhotos v-model="edit.images" />
           <v-text-field v-model="edit.expectedReturn" label="Expected return (text shown to people)" />
           <v-text-field v-model="edit.minInvestUsdc" label="Minimum investment (USDC)" inputmode="decimal" />
+          <v-text-field
+            v-model="edit.maxInvestUsdc"
+            label="Maximum per investment (USDC, empty = app limit)"
+            inputmode="decimal"
+            :hint="`The app-wide ceiling is ${d.pool.maxCeilingUsdc} USDC and cannot be exceeded.`"
+            persistent-hint
+            class="mb-4"
+          />
+          <v-text-field
+            v-model="edit.propertyPriceUsdc"
+            label="Full property price (USDC, shown for information)"
+            inputmode="decimal"
+            class="mb-2"
+          />
           <v-select v-model="edit.stage" :items="[...PROPERTY_STAGES]" label="Project stage" clearable />
           <v-text-field
             v-if="edit.stage && edit.stage !== d.property.stage"
@@ -213,6 +230,8 @@ const edit = reactive({
   images: [] as string[],
   expectedReturn: '',
   minInvestUsdc: '10',
+  maxInvestUsdc: '',
+  propertyPriceUsdc: '',
   stage: '' as string | null,
   stageNote: '',
 })
@@ -263,6 +282,8 @@ function fillEdit() {
   edit.images = [...p.images]
   edit.expectedReturn = p.expectedReturn
   edit.minInvestUsdc = String(p.minInvestUsdc)
+  edit.maxInvestUsdc = p.maxInvestSetting ? String(p.maxInvestSetting) : ''
+  edit.propertyPriceUsdc = p.propertyPriceUsdc ? String(p.propertyPriceUsdc) : ''
   edit.stage = p.stage || ''
   edit.stageNote = ''
 }
@@ -287,6 +308,8 @@ async function saveEdit() {
         images: edit.images,
         expectedReturn: edit.expectedReturn,
         minInvestUsdc: Number(edit.minInvestUsdc),
+        maxInvestUsdc: edit.maxInvestUsdc,
+        propertyPriceUsdc: edit.propertyPriceUsdc,
         stage: edit.stage || '',
         stageNote: edit.stageNote,
       },

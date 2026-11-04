@@ -1,6 +1,6 @@
 import { requireUser } from '../../utils/auth'
 import { getProperty, listInvestmentRows } from '../../utils/db'
-import { investSteps, isAdminEmail, microToUsdc, readInvestState } from '../../utils/propertiesRules'
+import { investSteps, effectiveMax, isAdminEmail, microToUsdc, readInvestState } from '../../utils/propertiesRules'
 import { poolSettings, poolWallet, readPosition, readSummary, usdcBalance } from '../../utils/properties'
 
 // One property: its description, funding progress, and the signed-in user's position.
@@ -39,6 +39,9 @@ export default defineEventHandler(async (event) => {
       stageLog: property.stage_log || [],
       expectedReturn: property.expected_return,
       minInvestUsdc: Number(property.min_invest_usdc),
+      maxInvestUsdc: effectiveMax(property.max_invest_usdc, pool.maxInvestUsdc),
+      maxInvestSetting: property.max_invest_usdc ? Number(property.max_invest_usdc) : null,
+      propertyPriceUsdc: property.property_price_usdc ? Number(property.property_price_usdc) : null,
     },
     chain: {
       status: summary.status,
@@ -53,7 +56,7 @@ export default defineEventHandler(async (event) => {
       chain: pool.chain,
       chainLabel: pool.chainLabel,
       address: pool.address,
-      maxInvestUsdc: pool.maxInvestUsdc,
+      maxCeilingUsdc: pool.maxInvestUsdc,
       live: pool.live,
     },
     wallet: wallet ? { address: wallet.address, balanceUsdc: balance } : null,

@@ -1,6 +1,6 @@
 import { rateLimit, requireUser } from '../../utils/auth'
 import { createPropertyRow } from '../../utils/db'
-import { isAdminEmail } from '../../utils/propertiesRules'
+import { isAdminEmail, optionalAmount } from '../../utils/propertiesRules'
 import { poolSettings, readSummary } from '../../utils/properties'
 import { cleanImages, cleanStage } from '../../utils/propertiesAdmin'
 
@@ -19,6 +19,11 @@ export default defineEventHandler(async (event) => {
   const onchainId = Number(b.onchainId)
   const title = text(b.title, 120)
   const min = Number(b.minInvestUsdc)
+  const maxInvest = optionalAmount(b.maxInvestUsdc)
+  const price = optionalAmount(b.propertyPriceUsdc)
+  if (Number.isNaN(maxInvest) || (maxInvest !== null && maxInvest < min) || Number.isNaN(price)) {
+    throw createError({ statusCode: 400, statusMessage: 'Check the maximum investment and property price' })
+  }
   const images = cleanImages(b.images)
   const stage = cleanStage(b.stage)
   if (stage === null) {
@@ -48,6 +53,8 @@ export default defineEventHandler(async (event) => {
     stage_log: stage ? [{ stage, at: new Date().toISOString(), note: '' }] : [],
     expected_return: text(b.expectedReturn, 200),
     min_invest_usdc: min,
+    max_invest_usdc: maxInvest,
+    property_price_usdc: price,
   })
   if (!row) {
     throw createError({ statusCode: 409, statusMessage: 'That property number is already listed' })

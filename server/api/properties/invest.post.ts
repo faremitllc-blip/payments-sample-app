@@ -1,7 +1,7 @@
 import { rateLimit, requireUser } from '../../utils/auth'
 import { isUuid } from '../../utils/circle'
 import { createInvestmentRow, getProperty, listInvestmentRows } from '../../utils/db'
-import { checkInvestAmount, newInvestState } from '../../utils/propertiesRules'
+import { checkInvestAmount, newInvestState, effectiveMax } from '../../utils/propertiesRules'
 import {
   advanceInvestment,
   poolSettings,
@@ -50,7 +50,7 @@ export default defineEventHandler(async (event) => {
   const checked = checkInvestAmount({
     raw: body.amount,
     minUsdc: Number(property.min_invest_usdc),
-    maxUsdc: pool.maxInvestUsdc,
+    maxUsdc: effectiveMax(property.max_invest_usdc, pool.maxInvestUsdc),
     remainingMicro: (remaining > BigInt(0) ? remaining : BigInt(0)).toString(),
     balanceUsdc: balance,
   })

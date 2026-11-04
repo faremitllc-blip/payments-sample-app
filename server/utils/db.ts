@@ -387,6 +387,8 @@ export interface PropertyRow {
   image_url: string
   expected_return: string
   min_invest_usdc: number | string
+  max_invest_usdc?: number | string | null
+  property_price_usdc?: number | string | null
   images?: string[] | null
   stage?: string | null
   stage_log?: Array<{ stage: string; at: string; note: string }> | null

@@ -207,3 +207,16 @@ export function investSteps(state: InvestState): InvestStepView[] {
     return { name: names[p as 'approve' | 'invest'], state: st }
   })
 }
+
+/** The most one investment may be: the property's own limit, never above the app-wide ceiling. */
+export function effectiveMax(perProperty: unknown, ceiling: number): number {
+  const own = Number(perProperty)
+  return Number.isFinite(own) && own > 0 ? Math.min(own, ceiling) : ceiling
+}
+
+/** Reads an optional positive amount from form input. Returns null when empty, NaN when invalid. */
+export function optionalAmount(v: unknown, max = 1_000_000_000): number | null {
+  if (v === '' || v === null || v === undefined) return null
+  const n = Number(v)
+  return Number.isFinite(n) && n > 0 && n <= max ? n : Number.NaN
+}

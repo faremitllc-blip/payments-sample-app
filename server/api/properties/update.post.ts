@@ -1,4 +1,5 @@
 import { getProperty, removePropertyImage, updatePropertyRow } from '../../utils/db'
+import { optionalAmount } from '../../utils/propertiesRules'
 import { cleanImages, cleanStage, requireAdmin } from '../../utils/propertiesAdmin'
 
 // Edits a listing: text, photos and build stage. Admin emails only.
@@ -23,6 +24,14 @@ export default defineEventHandler(async (event) => {
   if (!(min >= 1 && min <= 1_000_000)) {
     throw createError({ statusCode: 400, statusMessage: 'The minimum investment must be at least 1 USDC' })
   }
+  const maxInvest = optionalAmount(b.maxInvestUsdc)
+  const price = optionalAmount(b.propertyPriceUsdc)
+  if (Number.isNaN(maxInvest) || (maxInvest !== null && maxInvest < min)) {
+    throw createError({ statusCode: 400, statusMessage: 'The maximum investment must be a number that is not below the minimum' })
+  }
+  if (Number.isNaN(price)) {
+    throw createError({ statusCode: 400, statusMessage: 'The property price must be a positive number' })
+  }
   const images = cleanImages(b.images)
   const stage = cleanStage(b.stage)
   if (stage === null) {
@@ -40,6 +49,8 @@ export default defineEventHandler(async (event) => {
     description: text(b.description, 4000),
     expected_return: text(b.expectedReturn, 200),
     min_invest_usdc: min,
+    max_invest_usdc: maxInvest,
+    property_price_usdc: price,
     images,
     image_url: images[0] || '',
     stage,
