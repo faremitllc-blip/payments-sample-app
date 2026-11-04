@@ -1,6 +1,6 @@
 import { requireUser } from '../../utils/auth'
 import { getProperty, listInvestmentRows } from '../../utils/db'
-import { investSteps, microToUsdc, readInvestState } from '../../utils/propertiesRules'
+import { investSteps, isAdminEmail, microToUsdc, readInvestState } from '../../utils/propertiesRules'
 import { poolSettings, poolWallet, readPosition, readSummary, usdcBalance } from '../../utils/properties'
 
 // One property: its description, funding progress, and the signed-in user's position.
@@ -27,12 +27,16 @@ export default defineEventHandler(async (event) => {
   const target = BigInt(summary.target)
   const raised = BigInt(summary.raised)
   return {
+    admin: isAdminEmail(useRuntimeConfig().adminEmails, user.email),
     property: {
       id: property.id,
       title: property.title,
       location: property.location,
       description: property.description,
-      imageUrl: property.image_url,
+      imageUrl: (property.images && property.images[0]) || property.image_url,
+      images: property.images && property.images.length ? property.images : property.image_url ? [property.image_url] : [],
+      stage: property.stage || '',
+      stageLog: property.stage_log || [],
       expectedReturn: property.expected_return,
       minInvestUsdc: Number(property.min_invest_usdc),
     },

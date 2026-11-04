@@ -6,10 +6,44 @@
     <p v-if="loading" role="status" class="fm-balance-label mt-4">Loading…</p>
 
     <template v-else-if="d">
-      <img v-if="d.property.imageUrl" :src="d.property.imageUrl" alt="" class="mo-pd-img" />
+      <template v-if="d.property.images.length">
+        <img :src="d.property.images[photo] || d.property.images[0]" alt="" class="mo-pd-img" />
+        <div v-if="d.property.images.length > 1" class="mo-pd-thumbs">
+          <button
+            v-for="(u, n) in d.property.images"
+            :key="u"
+            type="button"
+            :class="{ on: n === photo }"
+            :aria-label="`Photo ${n + 1}`"
+            @click="photo = n"
+          >
+            <img :src="u" alt="" loading="lazy" />
+          </button>
+        </div>
+      </template>
       <h1 class="fm-page-title mt-4">{{ d.property.title }}</h1>
       <p v-if="d.property.location" class="mo-muted">{{ d.property.location }}</p>
       <p v-if="d.property.description" class="mt-3" style="white-space: pre-line">{{ d.property.description }}</p>
+
+      <section v-if="d.property.stage" class="mo-card mt-4">
+        <h2>Project stage</h2>
+        <ol class="mo-stages">
+          <li
+            v-for="(st, n) in PROPERTY_STAGES"
+            :key="st"
+            :class="{ done: n < stageIndex, now: n === stageIndex }"
+          >
+            <span class="dot">{{ n < stageIndex ? '✓' : n + 1 }}</span>
+            <span>{{ st }}</span>
+          </li>
+        </ol>
+        <div v-if="d.property.stageLog.length" class="mt-3">
+          <p v-for="(e, n) in [...d.property.stageLog].reverse()" :key="n" class="mo-muted">
+            {{ new Date(e.at).toLocaleDateString(undefined, { dateStyle: 'medium' }) }} · <strong>{{ e.stage }}</strong>
+            <template v-if="e.note"> — {{ e.note }}</template>
+          </p>
+        </div>
+      </section>
 
       <section class="mo-card mt-4">
         <div class="mo-pd-bar" aria-hidden="true"><div :style="{ width: pct + '%' }"></div></div>
@@ -119,11 +153,38 @@
           </div>
         </div>
       </section>
+
+      <section v-if="d.admin" class="mo-card mt-8">
+        <h2>Edit this listing (admin)</h2>
+        <v-alert v-if="editMsg" :type="editOk ? 'success' : 'error'" variant="tonal" class="mb-3">{{ editMsg }}</v-alert>
+        <v-form @submit.prevent="saveEdit">
+          <v-text-field v-model="edit.title" label="Title" />
+          <v-text-field v-model="edit.location" label="Location" />
+          <label class="mo-prop-field">
+            <span>Description</span>
+            <textarea v-model="edit.description" rows="5"></textarea>
+          </label>
+          <PropertyPhotos v-model="edit.images" />
+          <v-text-field v-model="edit.expectedReturn" label="Expected return (text shown to people)" />
+          <v-text-field v-model="edit.minInvestUsdc" label="Minimum investment (USDC)" inputmode="decimal" />
+          <v-select v-model="edit.stage" :items="[...PROPERTY_STAGES]" label="Project stage" clearable />
+          <v-text-field
+            v-if="edit.stage && edit.stage !== d.property.stage"
+            v-model="edit.stageNote"
+            label="Note for this stage update (optional)"
+          />
+          <div class="d-flex ga-2 flex-wrap">
+            <v-btn type="submit" color="primary" variant="flat" :loading="saving">Save changes</v-btn>
+            <v-btn variant="outlined" color="error" :loading="removing" @click="removeListing">Remove listing</v-btn>
+          </div>
+        </v-form>
+      </section>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
+import { PROPERTY_STAGES } from '~/utils/propertyStages'
 definePageMeta({ layout: 'dash', middleware: 'auth' })
 useHead({ title: 'Property' })
 
@@ -140,6 +201,22 @@ const amount = ref('')
 const agreed = ref(false)
 const starting = ref(false)
 const acting = ref('')
+const photo = ref(0)
+const saving = ref(false)
+const removing = ref(false)
+const editMsg = ref('')
+const editOk = ref(false)
+const edit = reactive({
+  title: '',
+  location: '',
+  description: '',
+  images: [] as string[],
+  expectedReturn: '',
+  minInvestUsdc: '10',
+  stage: '' as string | null,
+  stageNote: '',
+})
+const stageIndex = computed(() => (PROPERTY_STAGES as readonly string[]).indexOf(d.value?.property.stage))
 let timer: ReturnType<typeof setInterval> | null = null
 
 const running = computed(() => (d.value?.investments || []).some((i: any) => i.status === 'running'))
@@ -178,8 +255,66 @@ function mark(state: string) {
   return state === 'done' ? '✓' : state === 'failed' ? '✗' : state === 'running' ? '…' : '·'
 }
 
-async function load() {
+function fillEdit() {
+  const p = d.value.property
+  edit.title = p.title
+  edit.location = p.location
+  edit.description = p.description
+  edit.images = [...p.images]
+  edit.expectedReturn = p.expectedReturn
+  edit.minInvestUsdc = String(p.minInvestUsdc)
+  edit.stage = p.stage || ''
+  edit.stageNote = ''
+}
+
+async function load(refillEdit = false) {
   d.value = await api(`/api/properties/${id}`)
+  if (photo.value >= d.value.property.images.length) photo.value = 0
+  if (refillEdit || !edit.title) fillEdit()
+}
+
+async function saveEdit() {
+  editMsg.value = ''
+  saving.value = true
+  try {
+    await api('/api/properties/update', {
+      method: 'POST',
+      body: {
+        id,
+        title: edit.title,
+        location: edit.location,
+        description: edit.description,
+        images: edit.images,
+        expectedReturn: edit.expectedReturn,
+        minInvestUsdc: Number(edit.minInvestUsdc),
+        stage: edit.stage || '',
+        stageNote: edit.stageNote,
+      },
+    })
+    await load(true)
+    editOk.value = true
+    editMsg.value = 'Saved.'
+  } catch (err: any) {
+    editOk.value = false
+    editMsg.value = errorText(err)
+  } finally {
+    saving.value = false
+  }
+}
+
+async function removeListing() {
+  if (!window.confirm('Remove this listing from the app? This cannot be undone.')) return
+  editMsg.value = ''
+  removing.value = true
+  try {
+    await api('/api/properties/delete', { method: 'POST', body: { id } })
+    await navigateTo('/properties')
+  } catch (err: any) {
+    editOk.value = false
+    editMsg.value = errorText(err)
+  } finally {
+    removing.value = false
+  }
 }
 
 function poll() {
@@ -263,6 +398,20 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.mo-pd-thumbs { display: flex; gap: 8px; margin-top: 8px; overflow-x: auto; }
+.mo-pd-thumbs button { border: 2px solid transparent; border-radius: 8px; padding: 0; background: none; cursor: pointer; flex: 0 0 auto; }
+.mo-pd-thumbs button.on { border-color: #ff4b33; }
+.mo-pd-thumbs img { display: block; width: 72px; height: 54px; object-fit: cover; border-radius: 6px; }
+.mo-stages { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.mo-stages li { display: flex; align-items: center; gap: 10px; opacity: 0.55; }
+.mo-stages li.done, .mo-stages li.now { opacity: 1; }
+.mo-stages .dot { width: 26px; height: 26px; border-radius: 50%; border: 1px solid rgba(128,128,128,0.6); display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; }
+.mo-stages li.done .dot { background: #2e7d32; border-color: #2e7d32; color: #fff; }
+.mo-stages li.now .dot { background: #ff4b33; border-color: #ff4b33; color: #fff; }
+.mo-stages li.now { font-weight: 600; }
+.mo-prop-field { display: block; margin-bottom: 16px; }
+.mo-prop-field span { display: block; font-size: 0.85rem; margin-bottom: 6px; opacity: 0.8; }
+.mo-prop-field textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid rgba(128,128,128,0.5); background: transparent; color: inherit; font: inherit; }
 .mo-pd-img {
   display: block;
   width: 100%;

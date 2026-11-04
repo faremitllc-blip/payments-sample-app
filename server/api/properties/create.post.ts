@@ -2,6 +2,7 @@ import { rateLimit, requireUser } from '../../utils/auth'
 import { createPropertyRow } from '../../utils/db'
 import { isAdminEmail } from '../../utils/propertiesRules'
 import { poolSettings, readSummary } from '../../utils/properties'
+import { cleanImages, cleanStage } from '../../utils/propertiesAdmin'
 
 // Lists a property that was already created on the contract. Admin emails only.
 export default defineEventHandler(async (event) => {
@@ -18,15 +19,16 @@ export default defineEventHandler(async (event) => {
   const onchainId = Number(b.onchainId)
   const title = text(b.title, 120)
   const min = Number(b.minInvestUsdc)
-  const imageUrl = text(b.imageUrl, 500)
+  const images = cleanImages(b.images)
+  const stage = cleanStage(b.stage)
+  if (stage === null) {
+    throw createError({ statusCode: 400, statusMessage: 'That stage is not recognised' })
+  }
   if (!Number.isInteger(onchainId) || onchainId < 1 || !title) {
     throw createError({ statusCode: 400, statusMessage: 'A title and the contract property number are required' })
   }
   if (!(min >= 1 && min <= 1_000_000)) {
     throw createError({ statusCode: 400, statusMessage: 'The minimum investment must be at least 1 USDC' })
-  }
-  if (imageUrl && !/^https:\/\//.test(imageUrl)) {
-    throw createError({ statusCode: 400, statusMessage: 'The image link must start with https://' })
   }
 
   // The property must really exist on the contract.
@@ -40,7 +42,10 @@ export default defineEventHandler(async (event) => {
     title,
     location: text(b.location, 160),
     description: text(b.description, 4000),
-    image_url: imageUrl,
+    image_url: images[0] || '',
+    images,
+    stage,
+    stage_log: stage ? [{ stage, at: new Date().toISOString(), note: '' }] : [],
     expected_return: text(b.expectedReturn, 200),
     min_invest_usdc: min,
   })

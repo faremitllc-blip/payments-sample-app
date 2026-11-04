@@ -387,6 +387,9 @@ export interface PropertyRow {
   image_url: string
   expected_return: string
   min_invest_usdc: number | string
+  images?: string[] | null
+  stage?: string | null
+  stage_log?: Array<{ stage: string; at: string; note: string }> | null
   created_at?: string
 }
 
@@ -423,6 +426,75 @@ export async function createPropertyRow(
     prefer: 'resolution=ignore-duplicates,return=representation',
   })
   return rows.length > 0 ? rows[0] : null
+}
+
+export async function updatePropertyRow(
+  id: string,
+  patch: Partial<Omit<PropertyRow, 'id' | 'created_at' | 'onchain_id'>>,
+): Promise<PropertyRow | null> {
+  const rows = await dbRequest<PropertyRow[]>(`properties?id=eq.${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: { ...patch },
+    prefer: 'return=representation',
+  })
+  return rows.length > 0 ? rows[0] : null
+}
+
+export async function countInvestmentsForProperty(propertyId: string): Promise<number> {
+  const rows = await dbRequest<Array<{ id: string }>>(
+    `property_investments?property_id=eq.${encodeURIComponent(propertyId)}&select=id&limit=1`,
+  )
+  return rows.length
+}
+
+export async function deletePropertyRow(id: string): Promise<void> {
+  await dbRequest<unknown>(`properties?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
+/** Uploads a photo to the public bucket and returns its public link. */
+export async function uploadPropertyImage(name: string, bytes: Buffer, type: string): Promise<string> {
+  const config = useRuntimeConfig()
+  const baseUrl = String(config.public.supabaseUrl || '')
+  const serviceKey = String(config.supabaseServiceRoleKey || '')
+  if (!baseUrl || !serviceKey) {
+    throw createError({ statusCode: 500, statusMessage: 'The database is not configured on the server' })
+  }
+  try {
+    await $fetch(`${baseUrl}/storage/v1/object/property-images/${name}`, {
+      method: 'POST',
+      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'Content-Type': type },
+      body: bytes,
+    })
+  } catch (err: any) {
+    console.error('Photo upload failed', err?.statusCode, err?.data)
+    const msg = String(err?.data?.message || err?.data?.error || '')
+    throw createError({
+      statusCode: 502,
+      statusMessage: /bucket/i.test(msg)
+        ? 'The photo storage is not set up yet. Run add-property-media.sql in the Supabase SQL Editor'
+        : 'The photo could not be saved',
+    })
+  }
+  return `${baseUrl}/storage/v1/object/public/property-images/${name}`
+}
+
+/** Best effort: removes a photo we stored. Links from elsewhere are ignored. */
+export async function removePropertyImage(url: string): Promise<void> {
+  const config = useRuntimeConfig()
+  const baseUrl = String(config.public.supabaseUrl || '')
+  const serviceKey = String(config.supabaseServiceRoleKey || '')
+  const prefix = `${baseUrl}/storage/v1/object/public/property-images/`
+  if (!baseUrl || !serviceKey || !url.startsWith(prefix)) return
+  const name = url.slice(prefix.length)
+  if (!/^[0-9a-f-]{36}\.(jpg|png|webp)$/i.test(name)) return
+  try {
+    await $fetch(`${baseUrl}/storage/v1/object/property-images/${name}`, {
+      method: 'DELETE',
+      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+    })
+  } catch {
+    // The listing is already updated; a leftover file is harmless.
+  }
 }
 
 export async function createInvestmentRow(

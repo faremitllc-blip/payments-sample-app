@@ -44,6 +44,7 @@
                 </span>
               </div>
               <p v-if="p.location" class="mo-muted">{{ p.location }}</p>
+              <p v-if="p.stage" class="mo-muted">Stage: <strong>{{ p.stage }}</strong></p>
               <template v-if="p.chain">
                 <div class="mo-prop-bar" aria-hidden="true">
                   <div :style="{ width: pct(p.chain) + '%' }"></div>
@@ -74,9 +75,10 @@
               <span>Description</span>
               <textarea v-model="form.description" rows="4"></textarea>
             </label>
-            <v-text-field v-model="form.imageUrl" label="Image link (https://…)" />
+            <PropertyPhotos v-model="form.images" />
             <v-text-field v-model="form.expectedReturn" label="Expected return (text shown to people)" />
             <v-text-field v-model="form.minInvestUsdc" label="Minimum investment (USDC)" inputmode="decimal" />
+            <v-select v-model="form.stage" :items="[...PROPERTY_STAGES]" label="Project stage" clearable />
             <v-btn type="submit" color="primary" variant="flat" :loading="adminBusy">List property</v-btn>
           </v-form>
         </section>
@@ -86,6 +88,7 @@
 </template>
 
 <script setup lang="ts">
+import { PROPERTY_STAGES } from '~/utils/propertyStages'
 definePageMeta({ layout: 'dash', middleware: 'auth' })
 useHead({ title: 'Properties' })
 
@@ -100,6 +103,7 @@ interface Listing {
   title: string
   location: string
   imageUrl: string
+  stage?: string
   expectedReturn: string
   chain: Chain | null
 }
@@ -120,7 +124,8 @@ const form = reactive({
   title: '',
   location: '',
   description: '',
-  imageUrl: '',
+  images: [] as string[],
+  stage: '' as string | null,
   expectedReturn: '',
   minInvestUsdc: '10',
 })
@@ -158,7 +163,8 @@ async function createListing() {
         title: form.title,
         location: form.location,
         description: form.description,
-        imageUrl: form.imageUrl,
+        images: form.images,
+        stage: form.stage || '',
         expectedReturn: form.expectedReturn,
         minInvestUsdc: Number(form.minInvestUsdc),
       },
@@ -167,6 +173,8 @@ async function createListing() {
     adminMsg.value = 'Property listed.'
     form.onchainId = ''
     form.title = ''
+    form.images = []
+    form.stage = ''
     await load()
   } catch (err: any) {
     adminOk.value = false
