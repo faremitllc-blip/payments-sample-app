@@ -48,7 +48,10 @@ export default defineEventHandler(async (event) => {
   const added: AgentMessage[] = []
   const all = () => [...history, ...added]
 
+  const startedAt = Date.now()
   for (let step = 0; step < MAX_STEPS; step++) {
+    // Stop before the server's time limit instead of being cut off with a 504.
+    if (step > 0 && Date.now() - startedAt > 30_000) break
     const reply = await callGemini({
       apiKey,
       model,

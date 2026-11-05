@@ -103,7 +103,8 @@ export function parseGeminiReply(reply: any, newId: () => string): GeminiTurn {
 
 // If the configured model has been shut down or is overloaded ("high demand"),
 // these current ones are tried next, so the assistant keeps working.
-const FALLBACK_MODELS = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.1-flash-lite']
+// The light model is listed second: it is the fastest and usually the least busy.
+const FALLBACK_MODELS = ['gemini-3.1-flash-lite', 'gemini-3.8-flash', 'gemini-3.6-flash']
 
 export async function callGemini(options: {
   apiKey: string
@@ -116,8 +117,16 @@ export async function callGemini(options: {
   const candidates = [first, ...FALLBACK_MODELS.filter((m) => m !== first)]
   let lastDetail = ''
   let lastStatus = 0
+  // The whole call must finish well inside the server's time limit, so each
+  // attempt gets only what is left of this budget.
+  const deadline = Date.now() + 22_000
 
   for (const model of candidates) {
+    const left = deadline - Date.now()
+    if (left < 3_000) {
+      if (!lastStatus) lastStatus = 503
+      break
+    }
     try {
       return await $fetch<any>(
         `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
@@ -131,7 +140,7 @@ export async function callGemini(options: {
             toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
             generationConfig: { maxOutputTokens: 1200, temperature: 0.4 },
           },
-          timeout: 45_000,
+          timeout: Math.min(12_000, left),
         },
       )
     } catch (err: any) {

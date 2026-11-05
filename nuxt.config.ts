@@ -74,7 +74,7 @@ export default defineNuxtConfig({
   // Server routes that talk to Circle can wait a little longer than the
   // 10 second default.
   nitro: {
-    vercel: { functions: { maxDuration: 30 } },
+    vercel: { functions: { maxDuration: 60 } },
   },
 
   runtimeConfig: {
