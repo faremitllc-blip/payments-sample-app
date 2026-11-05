@@ -27,8 +27,11 @@
           <div class="mo-cur-grid mt-3">
             <div v-for="c in g.items" :key="c.code" class="mo-card mo-cur-card">
               <div class="mo-cur-top">
-                <strong>{{ c.code }}</strong>
-                <span class="mo-muted">{{ c.name }}</span>
+                <FlagIcon :code="c.code" :size="36" />
+                <div class="mo-cur-name">
+                  <strong>{{ c.code }}</strong>
+                  <span class="mo-muted">{{ c.name }}</span>
+                </div>
               </div>
               <p v-if="rates.rates[c.code]" class="mo-cur-amount">
                 {{ fmt(balance * rates.rates[c.code], c.decimals) }}
@@ -115,7 +118,9 @@ onMounted(async () => {
 .mo-cur-total { font-size: 1.8rem; font-weight: 700; margin: 4px 0 8px; }
 .mo-cur-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
 .mo-cur-card { padding: 16px; }
-.mo-cur-top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.mo-cur-top { display: flex; gap: 12px; align-items: center; }
+.mo-cur-name { display: flex; flex-direction: column; min-width: 0; }
+.mo-cur-name span { font-size: 0.8rem; }
 .mo-cur-amount { font-size: 1.3rem; font-weight: 600; margin: 10px 0 4px; word-break: break-word; }
 .mo-cur-amount span { font-size: 0.85rem; font-weight: 500; opacity: 0.7; }
 .mo-cur-rate { font-size: 0.8rem; margin: 0; }
