@@ -1,6 +1,6 @@
 /**
  * The currencies shown on the Currencies page. Edit this list to add, remove or
- * reorder them. `code` must be a currency that XE supports.
+ * reorder them. `code` must be a currency that Frankfurter covers (one it does not cover shows "Rate not available").
  */
 export interface CurrencyInfo {
   code: string

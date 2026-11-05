@@ -2,8 +2,8 @@
   <div class="fm-wrap fm-app-main">
     <h1 class="fm-page-title">Currencies</h1>
     <p class="fm-lede">
-      See what your USDC balance is worth in local currencies, using XE exchange
-      rates. Mondo holds your money as USDC. These are not separate accounts.
+      See what your USDC balance is worth in local currencies, using Frankfurter
+      exchange rates. Mondo holds your money as USDC. These are not separate accounts.
     </p>
 
     <v-alert v-if="error" type="error" variant="tonal" class="my-4" role="alert">{{ error }}</v-alert>
@@ -14,7 +14,7 @@
         <p class="fm-balance-label">Your USDC balance</p>
         <p class="mo-cur-total">{{ fmt(balance, 2) }} USDC</p>
         <p v-if="rates" class="mo-muted">
-          Rates from XE, updated {{ updated }}. 1 USDC is treated as 1 US dollar.
+          Rates from Frankfurter (central banks and official sources), for {{ updated }}. They update once a day. 1 USDC is treated as 1 US dollar.
         </p>
         <v-btn v-if="rates" size="small" variant="tonal" class="mt-2" :loading="refreshing" @click="refresh">
           Refresh rates
@@ -42,7 +42,7 @@
           </div>
         </section>
         <p class="mo-muted mt-6">
-          Mid-market rates, for information only. Banks and money transfer services
+          Reference rates, for information only. Banks and money transfer services
           charge their own rates and fees.
         </p>
       </template>
@@ -71,9 +71,11 @@ const groups = computed(() => [
   { title: 'African currencies', items: CURRENCIES.filter((c) => c.region === 'africa') },
   { title: 'International currencies', items: CURRENCIES.filter((c) => c.region === 'world') },
 ])
-const updated = computed(() =>
-  rates.value ? new Date(rates.value.updatedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '',
-)
+const updated = computed(() => {
+  if (!rates.value) return ''
+  const d = new Date(rates.value.updatedAt)
+  return Number.isNaN(d.getTime()) ? rates.value.updatedAt : d.toLocaleDateString(undefined, { dateStyle: 'medium' })
+})
 
 function fmt(v: number, digits: number) {
   return v.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits })
