@@ -12,7 +12,7 @@
     <template v-else>
       <section class="mo-card mt-4">
         <div class="mo-cur-head">
-          <img src="/usdc-coin.png" alt="USDC" class="mo-cur-coin" width="64" height="64" />
+          <span class="mo-cur-coin-wrap"><img src="/usdc-coin.png" alt="USDC" class="mo-cur-coin" width="64" height="64" /></span>
           <div>
             <p class="fm-balance-label">Your USDC balance</p>
             <p class="mo-cur-total">{{ fmt(balance, 2) }} USDC</p>
@@ -121,7 +121,24 @@ onMounted(async () => {
 
 <style scoped>
 .mo-cur-head { display: flex; align-items: center; gap: 16px; }
-.mo-cur-coin { width: 64px; height: 64px; flex: 0 0 auto; }
+/* The coin floats and turns gently from side to side, with a soft blue glow. */
+.mo-cur-coin-wrap { flex: 0 0 auto; perspective: 400px; display: inline-block; filter: drop-shadow(0 6px 10px rgba(30, 120, 220, 0.35)); animation: mo-coin-glow 3.2s ease-in-out infinite; }
+.mo-cur-coin { display: block; width: 64px; height: 64px; animation: mo-coin-spin 4.8s ease-in-out infinite, mo-coin-float 3.2s ease-in-out infinite; transform-style: preserve-3d; }
+@keyframes mo-coin-spin {
+  0%, 100% { transform: rotateY(-28deg); }
+  50% { transform: rotateY(28deg); }
+}
+@keyframes mo-coin-float {
+  0%, 100% { margin-top: 3px; }
+  50% { margin-top: -3px; }
+}
+@keyframes mo-coin-glow {
+  0%, 100% { filter: drop-shadow(0 6px 10px rgba(30, 120, 220, 0.25)); }
+  50% { filter: drop-shadow(0 8px 16px rgba(30, 120, 220, 0.55)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mo-cur-coin, .mo-cur-coin-wrap { animation: none; }
+}
 .mo-cur-total { font-size: 1.8rem; font-weight: 700; margin: 4px 0 8px; }
 .mo-cur-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
 .mo-cur-card { padding: 16px; }
