@@ -11,8 +11,13 @@
 
     <template v-else>
       <section class="mo-card mt-4">
-        <p class="fm-balance-label">Your USDC balance</p>
-        <p class="mo-cur-total">{{ fmt(balance, 2) }} USDC</p>
+        <div class="mo-cur-head">
+          <img src="/usdc-coin.png" alt="USDC" class="mo-cur-coin" width="64" height="64" />
+          <div>
+            <p class="fm-balance-label">Your USDC balance</p>
+            <p class="mo-cur-total">{{ fmt(balance, 2) }} USDC</p>
+          </div>
+        </div>
         <p v-if="rates" class="mo-muted">
           Rates from Frankfurter (central banks and official sources), for {{ updated }}. They update once a day. 1 USDC is treated as 1 US dollar.
         </p>
@@ -115,6 +120,8 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.mo-cur-head { display: flex; align-items: center; gap: 16px; }
+.mo-cur-coin { width: 64px; height: 64px; flex: 0 0 auto; }
 .mo-cur-total { font-size: 1.8rem; font-weight: 700; margin: 4px 0 8px; }
 .mo-cur-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
 .mo-cur-card { padding: 16px; }
