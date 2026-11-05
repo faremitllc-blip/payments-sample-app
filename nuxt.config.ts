@@ -103,6 +103,10 @@ export default defineNuxtConfig({
 
     // Whether the bridging packages are installed (set at build time).
 
+    // XE Currency Data (exchange rates). Server only.
+    xeAccountId: process.env.XE_ACCOUNT_ID || '',
+    xeApiKey: process.env.XE_API_KEY || '',
+
     // Property pool (pooled property investments). Server only.
     propertyPoolAddress: process.env.PROPERTY_POOL_ADDRESS || '',
     propertyPoolChain: process.env.PROPERTY_POOL_CHAIN || 'MATIC',
