@@ -101,7 +101,7 @@ export function parseGeminiReply(reply: any, newId: () => string): GeminiTurn {
   return { blocks, raw: kept.length > 0 ? { role: 'model', parts: kept } : null }
 }
 
-// If the configured model has been shut down (Google retires models regularly),
+// If the configured model has been shut down or is overloaded ("high demand"),
 // these current ones are tried next, so the assistant keeps working.
 const FALLBACK_MODELS = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.1-flash-lite']
 
@@ -138,8 +138,12 @@ export async function callGemini(options: {
       lastStatus = Number(err?.statusCode) || 0
       lastDetail = String(err?.data?.error?.message || err?.message || '').slice(0, 160)
       console.error('Gemini request failed', model, lastStatus, lastDetail)
-      // Only a missing model is worth trying another model for.
-      if (lastStatus !== 404) break
+      // A missing or overloaded model is worth trying another model for.
+      // Anything else (bad key, bad request) would fail the same way everywhere.
+      if (![404, 429, 500, 502, 503, 504].includes(lastStatus)) break
+      if (lastStatus === 503 || lastStatus === 429) {
+        await new Promise((r) => setTimeout(r, 700))
+      }
     }
   }
 
