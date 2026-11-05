@@ -1,10 +1,6 @@
 <template>
   <div class="fm-wrap fm-app-main">
     <h1 class="fm-page-title">Currencies</h1>
-    <p class="fm-lede">
-      See what your USDC balance is worth in local currencies, using Frankfurter
-      exchange rates. Mondo holds your money as USDC. These are not separate accounts.
-    </p>
 
     <v-alert v-if="error" type="error" variant="tonal" class="my-4" role="alert">{{ error }}</v-alert>
     <p v-if="loading" role="status" class="fm-balance-label">Loading…</p>
@@ -121,20 +117,13 @@ onMounted(async () => {
 
 <style scoped>
 .mo-cur-head { display: flex; align-items: center; gap: 16px; }
-/* The coin floats and turns gently from side to side, with a soft blue glow. */
-.mo-cur-coin-wrap { flex: 0 0 auto; perspective: 400px; display: inline-block; filter: drop-shadow(0 6px 10px rgba(30, 120, 220, 0.35)); animation: mo-coin-glow 3.2s ease-in-out infinite; }
-.mo-cur-coin { display: block; width: 64px; height: 64px; animation: mo-coin-spin 4.8s ease-in-out infinite, mo-coin-float 3.2s ease-in-out infinite; transform-style: preserve-3d; }
-@keyframes mo-coin-spin {
-  0%, 100% { transform: rotateY(-28deg); }
-  50% { transform: rotateY(28deg); }
-}
-@keyframes mo-coin-float {
-  0%, 100% { margin-top: 3px; }
-  50% { margin-top: -3px; }
-}
-@keyframes mo-coin-glow {
-  0%, 100% { filter: drop-shadow(0 6px 10px rgba(30, 120, 220, 0.25)); }
-  50% { filter: drop-shadow(0 8px 16px rgba(30, 120, 220, 0.55)); }
+/* One smooth full turn, then it stays still for 10 seconds before turning again. */
+.mo-cur-coin-wrap { flex: 0 0 auto; perspective: 500px; display: inline-block; filter: drop-shadow(0 6px 12px rgba(30, 120, 220, 0.4)); }
+.mo-cur-coin { display: block; width: 64px; height: 64px; animation: mo-coin-turn 11.6s cubic-bezier(0.45, 0, 0.25, 1) infinite; }
+@keyframes mo-coin-turn {
+  0% { transform: rotateY(0deg); }
+  13.8% { transform: rotateY(360deg); }
+  100% { transform: rotateY(360deg); }
 }
 @media (prefers-reduced-motion: reduce) {
   .mo-cur-coin, .mo-cur-coin-wrap { animation: none; }
