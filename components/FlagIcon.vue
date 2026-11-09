@@ -44,7 +44,23 @@ function jack(): string {
   )
 }
 
+function usFlag(): string {
+  // Shifted right so the star field sits inside the round window.
+  let out = '<g transform="translate(9 0)">'
+  for (let i = 0; i < 13; i++) out += rect(-12, (i * 40) / 13, 80, 40 / 13 + 0.1, i % 2 === 0 ? '#E0112B' : '#FFFFFF')
+  out += rect(-12, 0, 38, (40 / 13) * 7, '#1B2F8E')
+  for (let row = 0; row < 9; row++) {
+    const even = row % 2 === 0
+    const count = even ? 6 : 5
+    for (let j = 0; j < count; j++) {
+      out += star((even ? 2.2 : 4.3) + j * 4.2, 2.3 + row * 2.5, 1.2, '#fff')
+    }
+  }
+  return out + '</g>'
+}
+
 const FLAGS: Record<string, string> = {
+  USD: usFlag(),
   GBP: jack(),
   EUR:
     rect(0, 0, 60, 40, '#003399') +
@@ -125,16 +141,31 @@ const markup = computed(() => FLAGS[props.code] || rect(0, 0, 60, 40, '#9aa0a6')
   display: block;
   width: 100%;
   height: 100%;
+  /* Richer, livelier colours. */
+  filter: saturate(1.45) contrast(1.06) brightness(1.04);
 }
-/* The glossy look: a soft highlight on the top left and a faint shade at the bottom. */
+/* Glass-sphere look: a curved bright highlight on top, a soft glow from the centre,
+   darker edges, and a faint reflection at the bottom. */
+.mo-flag::before {
+  content: '';
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  top: 3%;
+  height: 42%;
+  border-radius: 50% 50% 50% 50% / 80% 80% 40% 40%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.05));
+  z-index: 1;
+  pointer-events: none;
+}
 .mo-flag::after {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: 50%;
   background:
-    radial-gradient(ellipse 70% 45% at 35% 18%, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 70%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0) 55%, rgba(0, 0, 0, 0.18) 100%);
+    radial-gradient(circle at 50% 55%, rgba(255, 255, 255, 0) 52%, rgba(0, 0, 0, 0.32) 100%),
+    radial-gradient(ellipse 60% 30% at 50% 96%, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0) 80%);
   pointer-events: none;
 }
 </style>

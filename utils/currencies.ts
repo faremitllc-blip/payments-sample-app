@@ -21,6 +21,7 @@ export const CURRENCIES: CurrencyInfo[] = [
   { code: 'GHS', name: 'Ghanaian cedi', region: 'africa', decimals: 2 },
   { code: 'ZAR', name: 'South African rand', region: 'africa', decimals: 2 },
   // International
+  { code: 'USD', name: 'US dollar', region: 'world', decimals: 2 },
   { code: 'EUR', name: 'Euro', region: 'world', decimals: 2 },
   { code: 'GBP', name: 'British pound', region: 'world', decimals: 2 },
   { code: 'COP', name: 'Colombian peso', region: 'world', decimals: 0 },

@@ -58,6 +58,9 @@ export async function getRates(): Promise<FxRates> {
     throw createError({ statusCode: 502, statusMessage: 'The rate service returned no rates' })
   }
 
+  // One USDC is one US dollar, so the dollar needs no lookup.
+  rates.USD = 1
+
   const result: FxRates = { base: 'USD', updatedAt: date || new Date().toISOString().slice(0, 10), rates }
   memoSet(CACHE_KEY, result, CACHE_MS)
   return result
