@@ -8,11 +8,12 @@
     <template v-else>
       <section class="mo-card mt-4">
         <div class="mo-cur-head">
-          <span class="mo-cur-coin-wrap"><img src="/usdc-coin.png" alt="USDC" class="mo-cur-coin" width="64" height="64" /></span>
+          <span class="mo-cur-coin-wrap"><span class="mo-cur-coin"><img src="/usdc-coin.png" alt="USDC" class="mo-face" width="64" height="64" /><img src="/usdc-coin.png" alt="" aria-hidden="true" class="mo-face mo-back" width="64" height="64" /></span></span>
           <div>
             <p class="fm-balance-label">Your USDC balance</p>
             <p class="mo-cur-total">{{ fmt(balance, 2) }} USDC</p>
           </div>
+          <v-btn to="/topup" color="primary" variant="flat" class="ml-auto" prepend-icon="mdi-plus">Top up</v-btn>
         </div>
         <p v-if="rates" class="mo-muted">
           Rates from Frankfurter (central banks and official sources), for {{ updated }}. They update once a day. 1 USDC is treated as 1 US dollar.
@@ -117,13 +118,17 @@ onMounted(async () => {
 
 <style scoped>
 .mo-cur-head { display: flex; align-items: center; gap: 16px; }
-/* One smooth full turn, then it stays still for 10 seconds before turning again. */
+/* A half turn (180 degrees), then 10 seconds still. The coin has the same picture on both
+   faces, so after the half turn it looks the same and the loop restarts without a jump. */
 .mo-cur-coin-wrap { flex: 0 0 auto; perspective: 500px; display: inline-block; }
-.mo-cur-coin { display: block; width: 64px; height: 64px; animation: mo-coin-turn 11.6s cubic-bezier(0.45, 0, 0.25, 1) infinite; }
-@keyframes mo-coin-turn {
+.mo-cur-coin { position: relative; display: block; width: 64px; height: 64px; transform-style: preserve-3d; animation: mo-coin-flip 11.6s cubic-bezier(0.45, 0, 0.25, 1) infinite; }
+.mo-face { position: absolute; inset: 0; width: 64px; height: 64px; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.mo-back { transform: rotateY(180deg); }
+@keyframes mo-coin-flip {
   0% { transform: rotateY(0deg); }
-  13.8% { transform: rotateY(360deg); }
-  100% { transform: rotateY(360deg); }
+  8.6% { transform: rotateY(180deg); }
+  100% { transform: rotateY(180deg); }
+  /* the loop restarts from 0deg, which looks identical to 180deg */
 }
 @media (prefers-reduced-motion: reduce) {
   .mo-cur-coin, .mo-cur-coin-wrap { animation: none; }
