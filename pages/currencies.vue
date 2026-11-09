@@ -118,7 +118,7 @@ onMounted(async () => {
 <style scoped>
 .mo-cur-head { display: flex; align-items: center; gap: 16px; }
 /* One smooth full turn, then it stays still for 10 seconds before turning again. */
-.mo-cur-coin-wrap { flex: 0 0 auto; perspective: 500px; display: inline-block; filter: drop-shadow(0 6px 12px rgba(30, 120, 220, 0.4)); }
+.mo-cur-coin-wrap { flex: 0 0 auto; perspective: 500px; display: inline-block; }
 .mo-cur-coin { display: block; width: 64px; height: 64px; animation: mo-coin-turn 11.6s cubic-bezier(0.45, 0, 0.25, 1) infinite; }
 @keyframes mo-coin-turn {
   0% { transform: rotateY(0deg); }
