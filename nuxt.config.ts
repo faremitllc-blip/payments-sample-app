@@ -95,6 +95,15 @@ export default defineNuxtConfig({
     bridgeApiKey: process.env.BRIDGE_API_KEY || '',
     bridgeBaseUrl: process.env.BRIDGE_BASE_URL || '',
     allowLiveBanking: process.env.ALLOW_LIVE_BANKING || '',
+
+    // Open banking payments (finAPI). Server only.
+    finapiClientId: process.env.FINAPI_CLIENT_ID || '',
+    finapiClientSecret: process.env.FINAPI_CLIENT_SECRET || '',
+    finapiApiUrl: process.env.FINAPI_API_URL || '',
+    finapiWebformUrl: process.env.FINAPI_WEBFORM_URL || '',
+    allowLiveOpenBanking: process.env.ALLOW_LIVE_OPENBANKING || '',
+    finapiInstant: process.env.FINAPI_INSTANT || '',
+    topupMaxEur: process.env.TOPUP_MAX_EUR || '',
     bridgeEndorsements: process.env.BRIDGE_ENDORSEMENTS || '',
 
     // Gemini (the in-app assistant). Server only.

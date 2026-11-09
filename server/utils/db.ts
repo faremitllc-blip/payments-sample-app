@@ -499,6 +499,42 @@ export async function removePropertyImage(url: string): Promise<void> {
   }
 }
 
+export interface TopupRow {
+  id: string
+  user_id: string
+  currency: string
+  amount: number | string
+  status: string
+  webform_id: string | null
+  payment_id: string | null
+  error: string | null
+  created_at?: string
+  updated_at?: string
+}
+
+export async function createTopupRow(
+  row: Omit<TopupRow, 'created_at' | 'updated_at'>,
+): Promise<void> {
+  await dbRequest<unknown>('topups', { method: 'POST', body: { ...row } })
+}
+
+export async function getTopupRow(userId: string, id: string): Promise<TopupRow | null> {
+  const rows = await dbRequest<TopupRow[]>(
+    `topups?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}&select=*`,
+  )
+  return rows.length > 0 ? rows[0] : null
+}
+
+export async function updateTopupRow(
+  id: string,
+  patch: Partial<Pick<TopupRow, 'status' | 'webform_id' | 'payment_id' | 'error'>>,
+): Promise<void> {
+  await dbRequest<unknown>(`topups?id=eq.${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: { ...patch, updated_at: new Date().toISOString() },
+  })
+}
+
 export async function createInvestmentRow(
   row: Omit<PropertyInvestmentRow, 'created_at' | 'updated_at'>,
 ): Promise<PropertyInvestmentRow | null> {

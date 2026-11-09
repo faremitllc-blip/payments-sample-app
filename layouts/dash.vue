@@ -114,6 +114,8 @@ const titles: Record<string, string> = {
   '/bridge': 'Bridge USDC',
   '/properties': 'Properties',
   '/currencies': 'Currencies',
+  '/topup': 'Top up',
+  '/topup/euro': 'Top up with open banking',
   '/bank': 'Bank accounts',
   '/activity': 'Activity',
   '/profile': 'Profile',
