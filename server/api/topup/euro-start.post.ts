@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { randomInt, randomUUID } from 'node:crypto'
 import { rateLimit, requireUser } from '../../utils/auth'
 import { createTopupRow, listBankAccounts, updateTopupRow } from '../../utils/db'
 import { startEuroPayment } from '../../utils/finapi'
@@ -48,12 +48,16 @@ export default defineEventHandler(async (event) => {
   const reference = text(ins.deposit_message) || text(ins.reference) || 'Mondo top-up'
 
   const id = randomUUID()
+  // A short code for the Mondo payment link. No letters that look alike (0/O, 1/l).
+  const alphabet = 'abcdefghjkmnpqrstuvwxyz23456789'
+  const code = Array.from({ length: 8 }, () => alphabet[randomInt(alphabet.length)]).join('')
   await createTopupRow({
     id,
     user_id: user.id,
     currency: 'EUR',
     amount: amount.toFixed(2),
     status: 'waiting',
+    code,
     webform_id: null,
     payment_id: null,
     error: null,
@@ -68,7 +72,7 @@ export default defineEventHandler(async (event) => {
       purpose: reference.slice(0, 140),
     })
     await updateTopupRow(id, { webform_id: started.webformId })
-    return { id, url: started.url, expiresAt: started.expiresAt }
+    return { id, code, expiresAt: started.expiresAt }
   } catch (err: any) {
     await updateTopupRow(id, {
       status: 'failed',

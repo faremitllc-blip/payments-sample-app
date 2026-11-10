@@ -505,6 +505,7 @@ export interface TopupRow {
   currency: string
   amount: number | string
   status: string
+  code?: string | null
   webform_id: string | null
   payment_id: string | null
   error: string | null
@@ -521,6 +522,13 @@ export async function createTopupRow(
 export async function getTopupRow(userId: string, id: string): Promise<TopupRow | null> {
   const rows = await dbRequest<TopupRow[]>(
     `topups?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}&select=*`,
+  )
+  return rows.length > 0 ? rows[0] : null
+}
+
+export async function getTopupByCode(userId: string, code: string): Promise<TopupRow | null> {
+  const rows = await dbRequest<TopupRow[]>(
+    `topups?code=eq.${encodeURIComponent(code)}&user_id=eq.${encodeURIComponent(userId)}&select=*`,
   )
   return rows.length > 0 ? rows[0] : null
 }

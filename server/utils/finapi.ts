@@ -235,3 +235,8 @@ export async function checkEuroPayment(topupId: string, webformId: string): Prom
   }
   return { status: 'sent', paymentId }
 }
+
+/** The bank page address for a payment that was already created. */
+export function webformLink(webformId: string): string {
+  return `${settings().webformUrl}/wf/${encodeURIComponent(webformId)}`
+}

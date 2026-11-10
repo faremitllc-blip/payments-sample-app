@@ -35,9 +35,13 @@
           Open the bank page, choose your bank and approve the payment there. Keep this page open.
           The link works for about 20 minutes.
         </p>
-        <v-btn v-if="url" :href="url" target="_blank" rel="noopener" color="primary" variant="flat" prepend-icon="mdi-open-in-new">
+        <v-btn v-if="code" :href="`/pay/${code}`" target="_blank" rel="noopener" color="primary" variant="flat" prepend-icon="mdi-open-in-new">
           Open my bank
         </v-btn>
+        <p v-if="code" class="mo-muted mt-3">
+          Your payment link: <strong>{{ payLink }}</strong>
+          <v-btn size="x-small" variant="text" @click="copyLink">{{ copied ? 'Copied' : 'Copy' }}</v-btn>
+        </p>
         <p class="mo-muted mt-4">Waiting for your bank…</p>
       </template>
 
@@ -80,7 +84,9 @@ const route = useRoute()
 const amount = ref('')
 const busy = ref(false)
 const error = ref('')
-const url = ref('')
+const code = ref('')
+const copied = ref(false)
+const payLink = computed(() => (import.meta.client ? `${window.location.origin}/pay/${code.value}` : ''))
 const topup = ref<Topup | null>(null)
 let timer: ReturnType<typeof setInterval> | null = null
 
@@ -118,14 +124,14 @@ async function start() {
   error.value = ''
   busy.value = true
   try {
-    const res = await api<{ id: string; url: string }>('/api/topup/euro-start', {
+    const res = await api<{ id: string; code: string }>('/api/topup/euro-start', {
       method: 'POST',
       body: { amount: Number(amount.value) },
     })
-    url.value = res.url
+    code.value = res.code
     topup.value = { id: res.id, status: 'waiting', amount: Number(amount.value) }
-    // The bank page opens in a new tab so this page can keep watching the payment.
-    window.open(res.url, '_blank', 'noopener')
+    // The Mondo payment page opens in a new tab so this page can keep watching the payment.
+    window.open(`/pay/${res.code}`, '_blank', 'noopener')
     poll(res.id)
   } catch (err: any) {
     error.value = errorText(err)
@@ -137,8 +143,18 @@ async function start() {
 function reset() {
   stopPolling()
   topup.value = null
-  url.value = ''
+  code.value = ''
   error.value = ''
+}
+
+async function copyLink() {
+  try {
+    await navigator.clipboard.writeText(payLink.value)
+    copied.value = true
+    setTimeout(() => (copied.value = false), 2000)
+  } catch {
+    // Copying is a convenience only.
+  }
 }
 
 onMounted(async () => {
