@@ -31,7 +31,7 @@ export async function assertSpendable(userId: string, amount: number, totalUsdc:
   if (toMicro(amount) > toMicro(available)) {
     throw createError({
       statusCode: 400,
-      statusMessage: `${total} USDC is set aside in your currency wallets. You can use up to ${available} USDC. Move some back to spend more.`,
+      statusMessage: `You can use up to ${available} USDC from your USDC wallet. ${total} USDC is held in your currency wallets; move it back to use it.`,
     })
   }
 }

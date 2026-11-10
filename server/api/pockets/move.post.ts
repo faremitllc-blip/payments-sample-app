@@ -37,7 +37,7 @@ export default defineEventHandler(async (event) => {
     if (amount > available) {
       throw createError({
         statusCode: 400,
-        statusMessage: `You can set aside up to ${fromMicro(Math.max(0, available))} USDC`,
+        statusMessage: `You can move up to ${fromMicro(Math.max(0, available))} USDC`,
       })
     }
     next = current + amount
@@ -45,7 +45,7 @@ export default defineEventHandler(async (event) => {
     if (amount > current) {
       throw createError({
         statusCode: 400,
-        statusMessage: `Only ${fromMicro(current)} USDC is set aside in ${currency}`,
+        statusMessage: `Only ${fromMicro(current)} USDC is available in your ${currency} wallet`,
       })
     }
     next = current - amount

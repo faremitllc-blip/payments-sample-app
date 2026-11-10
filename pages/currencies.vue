@@ -13,7 +13,7 @@
             <p class="fm-balance-label">Your USDC balance</p>
             <p class="mo-cur-total">{{ fmt(balance, 2) }} USDC</p>
             <p v-if="setAsideAll > 0" class="mo-muted mo-cur-split">
-              {{ fmt(available, 2) }} available · {{ fmt(setAsideAll, 2) }} set aside in currency wallets
+              {{ fmt(available, 2) }} in your USDC wallet · {{ fmt(setAsideAll, 2) }} in currency wallets
             </p>
           </div>
           <v-btn to="/topup" color="primary" variant="flat" class="ml-auto" prepend-icon="mdi-plus">Top up</v-btn>
@@ -43,7 +43,7 @@
                 <span>{{ c.code }}</span>
               </p>
               <p v-else class="mo-muted mo-cur-amount">Rate not available</p>
-              <p v-if="pockets[c.code]" class="mo-muted mo-cur-rate">{{ fmt(pockets[c.code], 2) }} USDC set aside</p>
+              <p v-if="pockets[c.code]" class="mo-muted mo-cur-rate">{{ fmt(pockets[c.code], 2) }} USDC</p>
               <p v-if="rates.rates[c.code]" class="mo-muted mo-cur-rate">
                 1 USDC = {{ fmt(rates.rates[c.code], rateDigits(rates.rates[c.code])) }} {{ c.code }}
               </p>
@@ -111,7 +111,7 @@ async function loadPockets() {
   try {
     pockets.value = (await api<{ pockets: Record<string, number> }>('/api/pockets')).pockets
   } catch {
-    // Before the setup SQL is run there is nothing set aside.
+    // Before the setup SQL is run no currency wallet holds funds yet.
     pockets.value = {}
   }
 }

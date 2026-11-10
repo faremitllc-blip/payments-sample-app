@@ -2,8 +2,7 @@
   <div class="fm-wrap fm-app-main">
     <h1 class="fm-page-title">Move funds</h1>
     <p class="fm-lede">
-      Set aside USDC in a currency wallet. Your money stays in Mondo and is shown in that currency at today's rate.
-      Set-aside USDC cannot be sent or invested until you move it back.
+      Move funds between your USDC wallet, your bank accounts and your currency wallets. Balances are shown in each currency at today's rate.
     </p>
 
     <v-alert v-if="error" type="error" variant="tonal" class="my-4" role="alert">{{ error }}</v-alert>
@@ -22,9 +21,6 @@
           <v-radio value="usdc" label="USDC wallet" />
           <v-radio value="bank" label="Mondo bank accounts (USD, EUR, GBP)" />
         </v-radio-group>
-        <p v-if="source === 'bank'" class="mo-muted">
-          Money that reaches your bank accounts arrives in your wallet as USDC, so this uses the same available balance.
-        </p>
         <p class="mo-muted mb-3">Available: <strong>{{ fmt(available, 2) }} USDC</strong></p>
       </template>
 
@@ -40,7 +36,7 @@
         class="mb-2"
       />
       <p class="mo-muted mb-3" v-if="direction === 'out'">
-        Set aside in {{ currency }}: <strong>{{ fmt(setAside, 2) }} USDC</strong>
+        Balance in your {{ currency }} wallet: <strong>{{ fmt(setAside, 2) }} USDC</strong>
       </p>
 
       <v-text-field
@@ -55,7 +51,7 @@
       />
 
       <v-btn color="primary" variant="flat" class="mt-4" :loading="busy" :disabled="!canSubmit" @click="submit">
-        {{ direction === 'in' ? 'Set aside' : 'Move back' }}
+        {{ direction === 'in' ? 'Move funds' : 'Move back to USDC' }}
       </v-btn>
       <v-btn variant="text" class="mt-4 ml-2" to="/currencies">Back to currencies</v-btn>
     </div>
@@ -127,8 +123,8 @@ async function submit() {
     })
     done.value =
       direction.value === 'in'
-        ? `${amount.value.trim()} USDC is now set aside in your ${currency.value} wallet.`
-        : `${amount.value.trim()} USDC was moved back from your ${currency.value} wallet.`
+        ? `${amount.value.trim()} USDC moved to your ${currency.value} wallet.`
+        : `${amount.value.trim()} USDC moved back to your USDC wallet.`
     amount.value = ''
     await load()
   } catch (err: any) {
