@@ -584,3 +584,35 @@ export async function updateInvestmentRow(
     prefer: 'return=minimal',
   })
 }
+
+export interface PocketRow {
+  user_id: string
+  currency: string
+  usdc: number | string
+  updated_at?: string
+}
+
+/** The USDC a user has set aside in each currency wallet. */
+export async function listPocketRows(userId: string): Promise<PocketRow[]> {
+  return await dbRequest<PocketRow[]>(
+    `currency_pockets?user_id=eq.${encodeURIComponent(userId)}&select=*`,
+  )
+}
+
+export async function savePocketRow(userId: string, currency: string, usdc: number): Promise<void> {
+  await dbRequest<unknown>('currency_pockets?on_conflict=user_id,currency', {
+    method: 'POST',
+    body: { user_id: userId, currency, usdc, updated_at: new Date().toISOString() },
+    prefer: 'resolution=merge-duplicates,return=minimal',
+  })
+}
+
+export async function logPocketMove(row: {
+  user_id: string
+  currency: string
+  direction: 'in' | 'out'
+  source: string
+  usdc: number
+}): Promise<void> {
+  await dbRequest<unknown>('pocket_moves', { method: 'POST', body: { ...row } })
+}

@@ -1,7 +1,8 @@
 import { rateLimit, requireUser } from '../utils/auth'
 import { isUuid, sendUsdc } from '../utils/circle'
-import { userNetworkWallets } from '../utils/crosschain'
+import { allUsdcBalances, userNetworkWallets } from '../utils/crosschain'
 import { getWalletRow } from '../utils/db'
+import { assertSpendable } from '../utils/pockets'
 
 interface TransferBody {
   to?: unknown
@@ -56,6 +57,10 @@ export default defineEventHandler(async (event) => {
       blockchain: chosen.blockchain,
     }
   }
+
+  // USDC set aside in a currency wallet cannot be sent.
+  const all = await allUsdcBalances(user.id, main)
+  await assertSpendable(user.id, Number(amount), Number(all.total))
 
   const transfer = await sendUsdc(wallet, to, amount, requestId)
   return { id: transfer.id, state: transfer.state }

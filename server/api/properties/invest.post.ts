@@ -1,5 +1,6 @@
 import { rateLimit, requireUser } from '../../utils/auth'
 import { isUuid } from '../../utils/circle'
+import { getPockets } from '../../utils/pockets'
 import { createInvestmentRow, getProperty, listInvestmentRows } from '../../utils/db'
 import { checkInvestAmount, newInvestState, effectiveMax } from '../../utils/propertiesRules'
 import {
@@ -46,7 +47,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'This property is not open for investment' })
   }
   const remaining = BigInt(summary.target) - BigInt(summary.raised)
-  const balance = await usdcBalance(wallet.circleWalletId)
+  const rawBalance = await usdcBalance(wallet.circleWalletId)
+  // USDC set aside in a currency wallet cannot be invested.
+  const balance = Math.max(0, rawBalance - (await getPockets(user.id)).total)
   const checked = checkInvestAmount({
     raw: body.amount,
     minUsdc: Number(property.min_invest_usdc),

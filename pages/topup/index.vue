@@ -1,23 +1,23 @@
 <template>
   <div class="fm-wrap fm-app-main">
     <h1 class="fm-page-title">Top up</h1>
-    <p class="fm-lede">Choose how you want to add money. It arrives as USDC in your Mondo wallet.</p>
+    <p class="fm-lede">Choose where the money comes from to fill your currency wallets.</p>
 
     <div class="mo-top-list">
-      <NuxtLink to="/receive" class="mo-card mo-top-item">
+      <NuxtLink :to="moveLink('usdc')" class="mo-card mo-top-item">
         <v-icon icon="mdi-wallet-outline" size="28" />
         <div>
           <strong>1. USDC wallet</strong>
-          <p class="mo-muted">Send USDC from another wallet or exchange to your Mondo address.</p>
+          <p class="mo-muted">Move USDC from your Mondo wallet into a currency wallet.</p>
         </div>
         <v-icon icon="mdi-chevron-right" />
       </NuxtLink>
 
-      <NuxtLink to="/bank" class="mo-card mo-top-item">
+      <NuxtLink :to="moveLink('bank')" class="mo-card mo-top-item">
         <v-icon icon="mdi-bank-outline" size="28" />
         <div>
           <strong>2. Mondo bank accounts</strong>
-          <p class="mo-muted">Send money from your bank to your Mondo account details. It is converted to USDC.</p>
+          <p class="mo-muted">Move money received in your USD, EUR or GBP bank accounts into a currency wallet.</p>
         </div>
         <v-icon icon="mdi-chevron-right" />
       </NuxtLink>
@@ -44,6 +44,13 @@
 <script setup lang="ts">
 definePageMeta({ layout: 'dash', middleware: 'auth' })
 useHead({ title: 'Top up' })
+
+const route = useRoute()
+// Keeps the chosen currency when coming from a currency card.
+const moveLink = (source: string) => ({
+  path: '/topup/move',
+  query: { source, ...(route.query.currency ? { currency: String(route.query.currency) } : {}) },
+})
 
 // Open banking (EUR) is connected.
 const euroOpen = true

@@ -12,6 +12,9 @@
           <div>
             <p class="fm-balance-label">Your USDC balance</p>
             <p class="mo-cur-total">{{ fmt(balance, 2) }} USDC</p>
+            <p v-if="setAsideAll > 0" class="mo-muted mo-cur-split">
+              {{ fmt(available, 2) }} available · {{ fmt(setAsideAll, 2) }} set aside in currency wallets
+            </p>
           </div>
           <v-btn to="/topup" color="primary" variant="flat" class="ml-auto" prepend-icon="mdi-plus">Top up</v-btn>
         </div>
@@ -36,13 +39,22 @@
                 </div>
               </div>
               <p v-if="rates.rates[c.code]" class="mo-cur-amount">
-                {{ fmt(balance * rates.rates[c.code], c.decimals) }}
+                {{ fmt((pockets[c.code] || 0) * rates.rates[c.code], c.decimals) }}
                 <span>{{ c.code }}</span>
               </p>
               <p v-else class="mo-muted mo-cur-amount">Rate not available</p>
+              <p v-if="pockets[c.code]" class="mo-muted mo-cur-rate">{{ fmt(pockets[c.code], 2) }} USDC set aside</p>
               <p v-if="rates.rates[c.code]" class="mo-muted mo-cur-rate">
                 1 USDC = {{ fmt(rates.rates[c.code], rateDigits(rates.rates[c.code])) }} {{ c.code }}
               </p>
+              <v-btn
+                v-if="rates.rates[c.code]"
+                :to="{ path: '/topup', query: { currency: c.code } }"
+                size="small"
+                variant="tonal"
+                class="mt-3"
+                prepend-icon="mdi-plus"
+              >Top up</v-btn>
             </div>
           </div>
         </section>
@@ -71,7 +83,10 @@ const refreshing = ref(false)
 const error = ref('')
 const rates = ref<{ updatedAt: string; rates: Record<string, number> } | null>(null)
 
+const pockets = ref<Record<string, number>>({})
 const balance = computed(() => Number(usdc.value) || 0)
+const setAsideAll = computed(() => Object.values(pockets.value).reduce((a, b) => a + b, 0))
+const available = computed(() => Math.max(0, balance.value - setAsideAll.value))
 const groups = computed(() => [
   { title: 'African currencies', items: CURRENCIES.filter((c) => c.region === 'africa') },
   { title: 'International currencies', items: CURRENCIES.filter((c) => c.region === 'world') },
@@ -92,10 +107,18 @@ function rateDigits(rate: number) {
 async function loadRates() {
   rates.value = await api('/api/rates')
 }
+async function loadPockets() {
+  try {
+    pockets.value = (await api<{ pockets: Record<string, number> }>('/api/pockets')).pockets
+  } catch {
+    // Before the setup SQL is run there is nothing set aside.
+    pockets.value = {}
+  }
+}
 async function refresh() {
   refreshing.value = true
   try {
-    await Promise.all([loadBalance(), loadRates()])
+    await Promise.all([loadBalance(), loadRates(), loadPockets()])
   } catch (err: any) {
     error.value = errorText(err)
   } finally {
@@ -107,7 +130,7 @@ onMounted(async () => {
   try {
     await loadWallet()
     // The balance and the rates load at the same time. A missing wallet just shows 0.
-    await Promise.all([wallet.value ? loadBalance() : Promise.resolve(), loadRates()])
+    await Promise.all([wallet.value ? loadBalance() : Promise.resolve(), loadRates(), loadPockets()])
   } catch (err: any) {
     error.value = errorText(err)
   } finally {
@@ -134,6 +157,7 @@ onMounted(async () => {
   .mo-cur-coin, .mo-cur-coin-wrap { animation: none; }
 }
 .mo-cur-total { font-size: 1.8rem; font-weight: 700; margin: 4px 0 8px; }
+.mo-cur-split { margin: 0 0 8px; font-size: 0.85rem; }
 .mo-cur-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
 .mo-cur-card { padding: 16px; }
 .mo-cur-top { display: flex; gap: 12px; align-items: center; }

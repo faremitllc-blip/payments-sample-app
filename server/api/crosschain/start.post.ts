@@ -3,6 +3,7 @@ import { circleSettings, isUuid } from '../../utils/circle'
 import { advanceBridge, userNetworkWallets, usdcBalance } from '../../utils/crosschain'
 import { checkBridgeAmount, checkRoute, newState } from '../../utils/crosschainRules'
 import { createBridgeTransfer, listBridgeTransfers } from '../../utils/db'
+import { getPockets } from '../../utils/pockets'
 
 interface StartBody {
   from?: unknown
@@ -51,7 +52,9 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const balance = await usdcBalance(source.circleWalletId)
+  const rawBalance = await usdcBalance(source.circleWalletId)
+  // USDC set aside in a currency wallet cannot be bridged.
+  const balance = Math.max(0, rawBalance - (await getPockets(user.id)).total)
   const amount = checkBridgeAmount(body.amount, settings.maxSendUsdc, balance)
   if (!amount.ok) {
     throw createError({ statusCode: 400, statusMessage: amount.message })
