@@ -616,3 +616,14 @@ export async function logPocketMove(row: {
 }): Promise<void> {
   await dbRequest<unknown>('pocket_moves', { method: 'POST', body: { ...row } })
 }
+
+/** The user's top-up for a TrueLayer payment id, or their latest top-up when no id is given. */
+export async function findTopupForReturn(userId: string, paymentId: string): Promise<TopupRow | null> {
+  const filter = /^[0-9a-zA-Z-]{8,64}$/.test(paymentId)
+    ? `&webform_id=like.${encodeURIComponent(`tl:${paymentId}:*`)}`
+    : ''
+  const rows = await dbRequest<TopupRow[]>(
+    `topups?user_id=eq.${encodeURIComponent(userId)}${filter}&select=*&order=created_at.desc&limit=1`,
+  )
+  return rows.length > 0 ? rows[0] : null
+}
