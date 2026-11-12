@@ -104,6 +104,12 @@ export default defineNuxtConfig({
     allowLiveOpenBanking: process.env.ALLOW_LIVE_OPENBANKING || '',
     finapiInstant: process.env.FINAPI_INSTANT || '',
     topupMaxEur: process.env.TOPUP_MAX_EUR || '',
+    // Open banking payments (TrueLayer). Server only. The signing key is a PEM private key.
+    truelayerClientId: process.env.TRUELAYER_CLIENT_ID || '',
+    truelayerClientSecret: process.env.TRUELAYER_CLIENT_SECRET || '',
+    truelayerKid: process.env.TRUELAYER_KID || '',
+    truelayerPrivateKey: process.env.TRUELAYER_PRIVATE_KEY || '',
+    openbankingProvider: process.env.OPENBANKING_PROVIDER || '',
     bridgeEndorsements: process.env.BRIDGE_ENDORSEMENTS || '',
 
     // Gemini (the in-app assistant). Server only.

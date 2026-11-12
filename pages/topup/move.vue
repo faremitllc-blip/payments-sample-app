@@ -10,10 +10,10 @@
     <p v-if="loading" role="status" class="fm-balance-label">Loading…</p>
 
     <div v-else class="mo-card mo-move">
-      <v-btn-toggle v-model="direction" mandatory divided density="comfortable" color="primary" class="mb-4">
-        <v-btn value="in">Add to currency wallet</v-btn>
-        <v-btn value="out">Move back to USDC</v-btn>
-      </v-btn-toggle>
+      <div class="mo-tabs" role="tablist">
+        <button type="button" role="tab" :aria-selected="direction === 'in'" :class="{ on: direction === 'in' }" @click="direction = 'in'">Add to currency wallet</button>
+        <button type="button" role="tab" :aria-selected="direction === 'out'" :class="{ on: direction === 'out' }" @click="direction = 'out'">Move back to USDC</button>
+      </div>
 
       <template v-if="direction === 'in'">
         <p class="fm-balance-label">From</p>
@@ -50,10 +50,13 @@
         @keyup.enter="submit"
       />
 
-      <v-btn color="primary" variant="flat" class="mt-4" :loading="busy" :disabled="!canSubmit" @click="submit">
-        {{ direction === 'in' ? 'Move funds' : 'Move back to USDC' }}
-      </v-btn>
-      <v-btn variant="text" class="mt-4 ml-2" to="/currencies">Back to currencies</v-btn>
+      <div class="mo-actions">
+        <v-btn class="mo-grad" variant="flat" :loading="busy" :disabled="!canSubmit" @click="submit">
+          {{ direction === 'in' ? 'Move funds' : 'Move back to USDC' }}
+        </v-btn>
+        <v-btn v-if="direction === 'out' && setAside > 0" variant="outlined" @click="amount = String(Number(setAside.toFixed(6)))">Move all</v-btn>
+        <v-btn variant="text" to="/currencies">Back to currencies</v-btn>
+      </div>
     </div>
   </div>
 </template>
@@ -88,6 +91,14 @@ const total = computed(() => Number(usdc.value) || 0)
 const setAsideAll = computed(() => Object.values(pockets.value).reduce((a, b) => a + b, 0))
 const available = computed(() => Math.max(0, total.value - setAsideAll.value))
 const setAside = computed(() => pockets.value[currency.value] || 0)
+watch(direction, (d) => {
+  error.value = ''
+  done.value = ''
+  if (d === 'out' && !pockets.value[currency.value]) {
+    const first = Object.keys(pockets.value).find((k) => pockets.value[k] > 0)
+    if (first) currency.value = first
+  }
+})
 const info = computed(() => CURRENCIES.find((c) => c.code === currency.value))
 
 const value = computed(() => Number(amount.value))
@@ -148,4 +159,14 @@ onMounted(async () => {
 
 <style scoped>
 .mo-move { max-width: 560px; padding: 20px; }
+.mo-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+.mo-tabs button {
+  padding: 12px 10px; border-radius: 12px; font-weight: 600; cursor: pointer;
+  border: 1.5px solid var(--fm-line); background: transparent; color: var(--fm-ink);
+}
+.mo-tabs button.on { border-color: transparent; color: #fff; background: linear-gradient(135deg, #2554e8 0%, #ff4b33 100%); box-shadow: 0 4px 14px rgba(37, 84, 232, 0.25); }
+.mo-tabs button:focus-visible { outline: 3px solid #a8e4ee; outline-offset: 2px; }
+.mo-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; align-items: center; }
+.mo-grad.v-btn { background: linear-gradient(135deg, #2554e8 0%, #ff4b33 100%) !important; color: #fff !important; }
+.mo-grad.v-btn--disabled { opacity: 0.45; }
 </style>

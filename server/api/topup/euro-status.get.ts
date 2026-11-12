@@ -1,6 +1,6 @@
 import { requireUser } from '../../utils/auth'
 import { getTopupRow, updateTopupRow } from '../../utils/db'
-import { checkEuroPayment } from '../../utils/finapi'
+import { checkPayment } from '../../utils/openbanking'
 
 // How a euro top-up is going. Asks the bank service while it is still waiting.
 export default defineEventHandler(async (event) => {
@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
   if (status === 'waiting' && row.webform_id) {
     const expired = Date.now() - new Date(row.created_at || Date.now()).getTime() > 25 * 60_000
     try {
-      const check = await checkEuroPayment(row.id, row.webform_id)
+      const check = await checkPayment(row.id, row.webform_id)
       if (check.status !== 'waiting') {
         status = check.status
         error = check.error || null
