@@ -98,7 +98,16 @@ function message(err: any): string {
   const d = err?.data
   const text =
     d?.detail || d?.title || d?.error_description || d?.error || d?.message || err?.statusMessage
-  return typeof text === 'string' && text ? text.slice(0, 240) : 'The bank payment service did not accept the request'
+  let out = typeof text === 'string' && text ? text : 'The bank payment service did not accept the request'
+  // TrueLayer lists what was wrong in "errors", for example which field was invalid.
+  if (d?.errors && typeof d.errors === 'object') {
+    try {
+      out += ` (${JSON.stringify(d.errors).slice(0, 200)})`
+    } catch {
+      // keep the short message
+    }
+  }
+  return out.slice(0, 300)
 }
 
 async function call<T>(
@@ -145,6 +154,8 @@ export async function startTrueLayerPayment(
     amount: number
     recipientName: string
     iban: string
+    /** Shown on the payment. TrueLayer requires one. */
+    reference: string
     payerName: string
     payerEmail: string
     returnUri: string
@@ -163,6 +174,7 @@ export async function startTrueLayerPayment(
         type: 'external_account',
         account_holder_name: payment.recipientName,
         account_identifier: { type: 'iban', iban: payment.iban },
+        reference: payment.reference,
       },
     },
     user: { name: payment.payerName, email: payment.payerEmail },

@@ -50,6 +50,8 @@ export async function startPayment(topupId: string, p: StartInput) {
       amount: p.amount,
       recipientName: p.recipientName,
       iban: p.iban,
+      // Short and plain: the bank statement text. A longer Bridge message is not cut, it is replaced.
+      reference: p.purpose.length > 0 && p.purpose.length <= 18 ? p.purpose : 'Mondo top-up',
       payerName: p.payerName,
       payerEmail: p.payerEmail,
       returnUri: `${p.origin}/topup/return`,
