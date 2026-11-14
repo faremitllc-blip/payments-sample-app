@@ -119,7 +119,7 @@ export async function callGemini(options: {
   let lastStatus = 0
   // The whole call must finish well inside the server's time limit, so each
   // attempt gets only what is left of this budget.
-  const deadline = Date.now() + 22_000
+  const deadline = Date.now() + 32_000
 
   for (const model of candidates) {
     const left = deadline - Date.now()
@@ -140,7 +140,7 @@ export async function callGemini(options: {
             toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
             generationConfig: { maxOutputTokens: 1200, temperature: 0.4 },
           },
-          timeout: Math.min(12_000, left),
+          timeout: Math.min(16_000, left),
         },
       )
     } catch (err: any) {
@@ -149,9 +149,10 @@ export async function callGemini(options: {
       console.error('Gemini request failed', model, lastStatus, lastDetail)
       // A missing or overloaded model is worth trying another model for.
       // Anything else (bad key, bad request) would fail the same way everywhere.
-      if (![404, 429, 500, 502, 503, 504].includes(lastStatus)) break
+      // A timeout has no status (0): the model was too slow, so try the next one.
+      if (![0, 404, 429, 500, 502, 503, 504].includes(lastStatus)) break
       if (lastStatus === 503 || lastStatus === 429) {
-        await new Promise((r) => setTimeout(r, 700))
+        await new Promise((r) => setTimeout(r, 500))
       }
     }
   }
@@ -162,7 +163,7 @@ export async function callGemini(options: {
       ? 'The assistant key was not accepted. Check GEMINI_API_KEY'
       : status === 404
         ? 'None of the assistant models were found. Set GEMINI_MODEL to a current model such as gemini-3.8-flash'
-        : status === 429 || status === 503
+        : status === 0 || status === 429 || status === 503
           ? 'The assistant is busy right now. Please try again in a moment'
           : status === 400
             ? 'The assistant could not read the conversation. Start a new chat'

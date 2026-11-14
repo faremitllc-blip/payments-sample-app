@@ -37,6 +37,15 @@
           <p class="mo-muted">Coming soon.</p>
         </div>
       </div>
+
+      <NuxtLink to="/topup/card" class="mo-card mo-top-item">
+        <v-icon icon="mdi-credit-card-outline" size="28" />
+        <div>
+          <strong>4. Card (EUR)</strong>
+          <p class="mo-muted">Pay in euros with a Visa or Mastercard.</p>
+        </div>
+        <v-icon icon="mdi-chevron-right" />
+      </NuxtLink>
     </div>
   </div>
 </template>

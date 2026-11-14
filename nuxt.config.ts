@@ -110,6 +110,17 @@ export default defineNuxtConfig({
     truelayerKid: process.env.TRUELAYER_KID || '',
     truelayerPrivateKey: process.env.TRUELAYER_PRIVATE_KEY || '',
     openbankingProvider: process.env.OPENBANKING_PROVIDER || '',
+    // Card payments (getMondo). Server only.
+    getmondoAccountId: process.env.GETMONDO_COMPANY_ACCOUNT_ID || '',
+    getmondoSecretKey: process.env.GETMONDO_GATEWAY_SECRET || '',
+    getmondoMode: process.env.GETMONDO_MODE || '',
+    allowLiveCards: process.env.ALLOW_LIVE_CARDS || '',
+    getmondoSandboxForce: process.env.GETMONDO_SANDBOX_FORCE || '',
+    cardFeePercent: process.env.CARD_FEE_PERCENT || '',
+    // The Mondo wallet the USDC for a card top-up is sent from.
+    treasuryWalletId: process.env.TREASURY_WALLET_ID || '',
+    treasuryWalletAddress: process.env.TREASURY_WALLET_ADDRESS || '',
+    treasuryBlockchain: process.env.TREASURY_BLOCKCHAIN || '',
     bridgeEndorsements: process.env.BRIDGE_ENDORSEMENTS || '',
 
     // Gemini (the in-app assistant). Server only.

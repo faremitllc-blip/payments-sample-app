@@ -509,6 +509,10 @@ export interface TopupRow {
   webform_id: string | null
   payment_id: string | null
   error: string | null
+  /** 'card' for getMondo card payments; empty for open banking. */
+  method?: string | null
+  usdc_amount?: number | string | null
+  usdc_tx?: string | null
   created_at?: string
   updated_at?: string
 }
@@ -535,7 +539,7 @@ export async function getTopupByCode(userId: string, code: string): Promise<Topu
 
 export async function updateTopupRow(
   id: string,
-  patch: Partial<Pick<TopupRow, 'status' | 'webform_id' | 'payment_id' | 'error'>>,
+  patch: Partial<Pick<TopupRow, 'status' | 'webform_id' | 'payment_id' | 'error' | 'usdc_amount' | 'usdc_tx'>>,
 ): Promise<void> {
   await dbRequest<unknown>(`topups?id=eq.${encodeURIComponent(id)}`, {
     method: 'PATCH',
@@ -583,4 +587,81 @@ export async function updateInvestmentRow(
     body: { ...patch, updated_at: new Date().toISOString() },
     prefer: 'return=minimal',
   })
+}
+
+export interface PocketRow {
+  user_id: string
+  currency: string
+  usdc: number | string
+  updated_at?: string
+}
+
+/** The USDC a user has set aside in each currency wallet. */
+export async function listPocketRows(userId: string): Promise<PocketRow[]> {
+  return await dbRequest<PocketRow[]>(
+    `currency_pockets?user_id=eq.${encodeURIComponent(userId)}&select=*`,
+  )
+}
+
+export async function savePocketRow(userId: string, currency: string, usdc: number): Promise<void> {
+  await dbRequest<unknown>('currency_pockets?on_conflict=user_id,currency', {
+    method: 'POST',
+    body: { user_id: userId, currency, usdc, updated_at: new Date().toISOString() },
+    prefer: 'resolution=merge-duplicates,return=minimal',
+  })
+}
+
+export async function logPocketMove(row: {
+  user_id: string
+  currency: string
+  direction: 'in' | 'out'
+  source: string
+  usdc: number
+}): Promise<void> {
+  await dbRequest<unknown>('pocket_moves', { method: 'POST', body: { ...row } })
+}
+
+/** The user's top-up for a TrueLayer payment id, or their latest top-up when no id is given. */
+export async function findTopupForReturn(userId: string, paymentId: string): Promise<TopupRow | null> {
+  const filter = /^[0-9a-zA-Z-]{8,64}$/.test(paymentId)
+    ? `&webform_id=like.${encodeURIComponent(`tl:${paymentId}:*`)}`
+    : ''
+  const rows = await dbRequest<TopupRow[]>(
+    `topups?user_id=eq.${encodeURIComponent(userId)}${filter}&select=*&order=created_at.desc&limit=1`,
+  )
+  return rows.length > 0 ? rows[0] : null
+}
+
+export async function getTopupById(id: string): Promise<TopupRow | null> {
+  const rows = await dbRequest<TopupRow[]>(`topups?id=eq.${encodeURIComponent(id)}&select=*`)
+  return rows.length > 0 ? rows[0] : null
+}
+
+/** The user's card top-up for a getMondo session id. */
+export async function getTopupBySession(userId: string, sessionId: string): Promise<TopupRow | null> {
+  const rows = await dbRequest<TopupRow[]>(
+    `topups?webform_id=eq.${encodeURIComponent(`gm:${sessionId}`)}&user_id=eq.${encodeURIComponent(userId)}&select=*`,
+  )
+  return rows.length > 0 ? rows[0] : null
+}
+
+/**
+ * Moves a top-up from one status to the next only if it is still in the first one.
+ * Returns true for the one caller that wins, so money is never sent twice.
+ */
+export async function claimTopup(
+  id: string,
+  from: string,
+  to: string,
+  patch: { error?: string | null } = {},
+): Promise<boolean> {
+  const rows = await dbRequest<TopupRow[]>(
+    `topups?id=eq.${encodeURIComponent(id)}&status=eq.${encodeURIComponent(from)}`,
+    {
+      method: 'PATCH',
+      body: { status: to, updated_at: new Date().toISOString(), ...patch },
+      prefer: 'return=representation',
+    },
+  )
+  return Array.isArray(rows) && rows.length > 0
 }
