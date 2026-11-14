@@ -1,7 +1,7 @@
 import { randomInt, randomUUID } from 'node:crypto'
 import { rateLimit, requireUser } from '../../utils/auth'
-import { createTopupRow, getProfileRow, listBankAccounts, updateTopupRow } from '../../utils/db'
-import { openBankingConfigured, siteOrigin, startPayment } from '../../utils/openbanking'
+import { createTopupRow, listBankAccounts, updateTopupRow } from '../../utils/db'
+import { startEuroPayment } from '../../utils/finapi'
 
 // Starts a euro top-up from the user's own bank, using open banking. The payment
 // goes to the user's own Bridge euro account, which turns it into USDC in their
@@ -12,9 +12,6 @@ export default defineEventHandler(async (event) => {
 
   const config = useRuntimeConfig()
   const max = Number(config.topupMaxEur) > 0 ? Number(config.topupMaxEur) : 50
-  if (!openBankingConfigured()) {
-    throw createError({ statusCode: 503, statusMessage: 'Open banking is not set up on the server yet' })
-  }
   const b = (await readBody<{ amount?: unknown }>(event)) || {}
   const amount = Math.round(Number(b.amount) * 100) / 100
   if (!Number.isFinite(amount) || amount < 1 || amount > max) {
@@ -67,17 +64,12 @@ export default defineEventHandler(async (event) => {
   })
 
   try {
-    const profile = await getProfileRow(user.id)
-    const payerName = text(profile?.display_name) || user.email.split('@')[0] || 'Mondo customer'
-    const started = await startPayment(id, {
+    const started = await startEuroPayment(id, {
       amount,
       recipientName: name,
       iban,
       bic: text(ins.bic) || undefined,
       purpose: reference.slice(0, 140),
-      payerName,
-      payerEmail: user.email,
-      origin: siteOrigin(event),
     })
     await updateTopupRow(id, { webform_id: started.webformId })
     return { id, code, expiresAt: started.expiresAt }
