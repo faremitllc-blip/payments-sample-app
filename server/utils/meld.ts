@@ -60,8 +60,10 @@ function refusal(err: any): string {
     for (const key of ['message', 'error', 'code', 'detail']) {
       if (typeof d[key] === 'string' && d[key]) parts.push(d[key])
     }
+    const list = Array.isArray(d.errors) ? d.errors : Array.isArray(d.details) ? d.details : []
+    for (const e of list.slice(0, 3)) parts.push(typeof e === 'string' ? e : JSON.stringify(e))
   }
-  const text = parts.join(' | ').replace(/\s+/g, ' ').slice(0, 200)
+  const text = parts.join(' | ').replace(/\s+/g, ' ').slice(0, 300)
   return text || 'The buying service did not accept the request'
 }
 
@@ -70,7 +72,12 @@ async function call<T>(path: string, options: { method?: 'GET' | 'POST'; body?: 
   try {
     return await $fetch<T>(`${s.baseUrl}${path}`, {
       method: options.method || 'GET',
-      headers: { Authorization: `BASIC ${s.apiKey}`, 'Content-Type': 'application/json' },
+      headers: {
+        Authorization: `BASIC ${s.apiKey}`,
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        'Meld-Version': '2026-02-03',
+      },
       body: options.body as any,
       timeout: 20_000,
     })
@@ -94,7 +101,8 @@ export async function bestQuote(input: {
       countryCode: input.country,
       sourceCurrencyCode: input.currency,
       destinationCurrencyCode: s.destination,
-      sourceAmount: input.amount.toFixed(2),
+      sourceAmount: input.amount,
+      paymentMethodType: 'CREDIT_DEBIT_CARD',
     },
   })
   const quotes: MeldQuote[] = (res?.quotes || [])
@@ -135,6 +143,7 @@ export async function createWidgetSession(input: {
         countryCode: input.country,
         sourceCurrencyCode: input.quote.sourceCurrencyCode,
         sourceAmount: input.quote.sourceAmount.toFixed(2),
+        paymentMethodType: 'CREDIT_DEBIT_CARD',
         destinationCurrencyCode: s.destination,
         walletAddress: input.walletAddress,
         redirectUrl: input.redirectUrl,
