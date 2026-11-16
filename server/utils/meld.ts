@@ -89,11 +89,11 @@ async function call<T>(path: string, options: { method?: 'GET' | 'POST'; body?: 
 }
 
 /** The quote with the most USDC for the money, from whichever provider offers it. */
-export async function bestQuote(input: {
+export async function allQuotes(input: {
   country: string
   currency: string
   amount: number
-}): Promise<MeldQuote> {
+}): Promise<MeldQuote[]> {
   const s = settings()
   const res = await call<{ quotes?: any[] }>('/payments/crypto/quote', {
     method: 'POST',
@@ -122,7 +122,20 @@ export async function bestQuote(input: {
     })
   }
   quotes.sort((a, b) => b.destinationAmount - a.destinationAmount)
-  return quotes[0]
+  // Optional: only use the listed providers (comma separated), for example while testing.
+  const only = cleanCredential(useRuntimeConfig().meldProviders)
+    .split(',')
+    .map((x) => x.trim().toUpperCase())
+    .filter(Boolean)
+  const picked = only.length ? quotes.filter((q) => only.includes(q.serviceProvider.toUpperCase())) : quotes
+  if (picked.length === 0) {
+    throw createError({ statusCode: 404, statusMessage: 'No allowed payment provider is available for this purchase' })
+  }
+  return picked
+}
+
+export async function bestQuote(input: { country: string; currency: string; amount: number }): Promise<MeldQuote> {
+  return (await allQuotes(input))[0]
 }
 
 export async function createWidgetSession(input: {

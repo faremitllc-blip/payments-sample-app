@@ -121,6 +121,7 @@ export default defineNuxtConfig({
     meldApiKey: process.env.MELD_API_KEY || '',
     meldMode: process.env.MELD_MODE || '',
     allowLiveOnramp: process.env.ALLOW_LIVE_ONRAMP || '',
+    meldProviders: process.env.MELD_PROVIDERS || '',
     meldDestCurrency: process.env.MELD_DEST_CURRENCY || '',
     // The Mondo wallet the USDC for a card top-up is sent from.
     treasuryWalletId: process.env.TREASURY_WALLET_ID || '',

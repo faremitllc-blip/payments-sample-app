@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { rateLimit, requireUser } from '../../utils/auth'
 import { createTopupRow, getWalletRow, updateTopupRow } from '../../utils/db'
-import { bestQuote, createWidgetSession } from '../../utils/meld'
+import { allQuotes, createWidgetSession } from '../../utils/meld'
 import { siteOrigin } from '../../utils/openbanking'
 
 // Starts a purchase of USDC through Meld. The USDC goes straight to the customer's own
@@ -33,7 +33,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Your main wallet is not on Polygon' })
   }
 
-  const quote = await bestQuote({ country, currency, amount })
+  const quotes = await allQuotes({ country, currency, amount })
   const id = randomUUID()
   await createTopupRow({
     id,
@@ -46,22 +46,28 @@ export default defineEventHandler(async (event) => {
     payment_id: null,
     error: null,
   })
-  try {
-    const session = await createWidgetSession({
-      quote,
-      country,
-      walletAddress: wallet.address,
-      externalSessionId: id,
-      externalCustomerId: user.id,
-      redirectUrl: `${siteOrigin(event)}/topup/meld-return?id=${id}`,
-    })
-    await updateTopupRow(id, { webform_id: `meld:${session.id}` })
-    return { id, widgetUrl: session.widgetUrl }
-  } catch (err: any) {
-    await updateTopupRow(id, {
-      status: 'failed',
-      error: String(err?.statusMessage || 'Could not start the purchase').slice(0, 240),
-    })
-    throw err
+  let lastErr: any = null
+  // If one provider is not available, try the next best one.
+  for (const quote of quotes.slice(0, 4)) {
+    try {
+      const session = await createWidgetSession({
+        quote,
+        country,
+        walletAddress: wallet.address,
+        externalSessionId: id,
+        externalCustomerId: user.id,
+        redirectUrl: `${siteOrigin(event)}/topup/meld-return?id=${id}`,
+      })
+      await updateTopupRow(id, { webform_id: `meld:${session.id}` })
+      return { id, widgetUrl: session.widgetUrl }
+    } catch (err: any) {
+      lastErr = err
+      console.error('Meld provider failed', quote.serviceProvider, err?.statusMessage)
+    }
   }
+  await updateTopupRow(id, {
+    status: 'failed',
+    error: String(lastErr?.statusMessage || 'Could not start the purchase').slice(0, 240),
+  })
+  throw lastErr
 })
