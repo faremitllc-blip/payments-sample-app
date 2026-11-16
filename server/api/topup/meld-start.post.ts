@@ -47,6 +47,7 @@ export default defineEventHandler(async (event) => {
     error: null,
   })
   let lastErr: any = null
+  const tried: string[] = []
   // If one provider is not available, try the next best one.
   for (const quote of quotes.slice(0, 4)) {
     try {
@@ -62,6 +63,7 @@ export default defineEventHandler(async (event) => {
       return { id, widgetUrl: session.widgetUrl }
     } catch (err: any) {
       lastErr = err
+      tried.push(quote.serviceProvider)
       console.error('Meld provider failed', quote.serviceProvider, err?.statusMessage)
     }
   }
@@ -69,5 +71,8 @@ export default defineEventHandler(async (event) => {
     status: 'failed',
     error: String(lastErr?.statusMessage || 'Could not start the purchase').slice(0, 240),
   })
+  if (lastErr?.statusMessage) {
+    lastErr.statusMessage = `${lastErr.statusMessage} (tried: ${tried.join(', ')} of ${quotes.length} offered)`
+  }
   throw lastErr
 })
