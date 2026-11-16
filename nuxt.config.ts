@@ -117,6 +117,11 @@ export default defineNuxtConfig({
     allowLiveCards: process.env.ALLOW_LIVE_CARDS || '',
     getmondoSandboxForce: process.env.GETMONDO_SANDBOX_FORCE || '',
     cardFeePercent: process.env.CARD_FEE_PERCENT || '',
+    // Buy USDC with a card or bank through Meld (server only).
+    meldApiKey: process.env.MELD_API_KEY || '',
+    meldMode: process.env.MELD_MODE || '',
+    allowLiveOnramp: process.env.ALLOW_LIVE_ONRAMP || '',
+    meldDestCurrency: process.env.MELD_DEST_CURRENCY || '',
     // The Mondo wallet the USDC for a card top-up is sent from.
     treasuryWalletId: process.env.TREASURY_WALLET_ID || '',
     treasuryWalletAddress: process.env.TREASURY_WALLET_ADDRESS || '',

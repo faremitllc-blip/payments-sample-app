@@ -119,6 +119,8 @@ const titles: Record<string, string> = {
   '/topup/move': 'Move funds',
   '/topup/return': 'Top up',
   '/topup/card': 'Pay by card',
+  '/topup/buy': 'Buy USDC',
+  '/topup/meld-return': 'Purchase result',
   '/pay': 'Pay with Mondo',
   '/bank': 'Bank accounts',
   '/activity': 'Activity',

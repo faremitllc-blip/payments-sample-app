@@ -38,6 +38,15 @@
         </div>
       </div>
 
+      <NuxtLink to="/topup/buy" class="mo-card mo-top-item">
+        <v-icon icon="mdi-cash-fast" size="28" />
+        <div>
+          <strong>5. Buy USDC</strong>
+          <p class="mo-muted">Pay with a card or local payment method. The USDC arrives in your Mondo wallet.</p>
+        </div>
+        <v-icon icon="mdi-chevron-right" />
+      </NuxtLink>
+
       <NuxtLink to="/topup/card" class="mo-card mo-top-item">
         <v-icon icon="mdi-credit-card-outline" size="28" />
         <div>
