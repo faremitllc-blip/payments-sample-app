@@ -69,12 +69,20 @@ export function withPaymentId(stored: string, paymentId: string): string {
 }
 
 function refusal(err: any): string {
-  const e = err?.data?.error
-  const text = [e?.class, e?.message]
-    .filter((x) => typeof x === 'string' && x)
-    .join(': ')
-    .replace(/\s+/g, ' ')
-    .slice(0, 300)
+  const d = err?.data
+  const e = d?.error && typeof d.error === 'object' ? d.error : d
+  const parts: string[] = []
+  const status = Number(err?.statusCode) || 0
+  if (status) parts.push(`HTTP ${status}`)
+  if (e && typeof e === 'object') {
+    for (const k of ['class', 'error_class', 'message', 'error_message']) {
+      if (typeof e[k] === 'string' && e[k]) parts.push(e[k])
+    }
+  } else if (typeof d === 'string' && d) {
+    parts.push(d)
+  }
+  if (parts.length <= 1 && err?.message) parts.push(String(err.message))
+  const text = parts.join(': ').replace(/\s+/g, ' ').slice(0, 300)
   return text || 'The bank service did not accept the request'
 }
 
@@ -101,7 +109,7 @@ async function call<T>(path: string, method: 'GET' | 'POST', payload?: unknown):
     })
   } catch (err: any) {
     const status = Number(err?.statusCode) || 0
-    console.error('Salt Edge request failed', method, path, status, JSON.stringify(err?.data || '').slice(0, 500))
+    console.error('Salt Edge request failed', method, path, status, JSON.stringify(err?.data || String(err?.message || '')).slice(0, 500))
     throw createError({ statusCode: status && status < 500 ? 400 : 502, statusMessage: refusal(err) })
   }
 }
