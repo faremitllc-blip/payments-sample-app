@@ -55,6 +55,7 @@ export interface StartInput {
   origin: string
   clientIp?: string
   userId?: string
+  knownCustomerId?: string
 }
 
 export async function startPayment(topupId: string, p: StartInput) {
@@ -67,6 +68,7 @@ export async function startPayment(topupId: string, p: StartInput) {
       reference: p.purpose,
       email: p.payerEmail,
       userId: p.userId || '',
+      knownCustomerId: p.knownCustomerId,
       clientIp: p.clientIp || '',
       returnUri: `${p.origin}/topup/return?t=${encodeURIComponent(topupId)}`,
     })

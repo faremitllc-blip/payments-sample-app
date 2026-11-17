@@ -632,6 +632,16 @@ export async function findTopupForReturn(userId: string, paymentId: string): Pro
   return rows.length > 0 ? rows[0] : null
 }
 
+/** The Salt Edge customer made for this user's earlier top-up, if there was one. */
+export async function findSaltEdgeCustomer(userId: string): Promise<string> {
+  const rows = await dbRequest<TopupRow[]>(
+    `topups?user_id=eq.${encodeURIComponent(userId)}&webform_id=like.${encodeURIComponent('se:*')}` +
+      `&select=webform_id&order=created_at.desc&limit=1`,
+  )
+  const stored = rows.length > 0 ? String(rows[0].webform_id || '') : ''
+  return stored.split(':')[3] || ''
+}
+
 export async function getTopupById(id: string): Promise<TopupRow | null> {
   const rows = await dbRequest<TopupRow[]>(`topups?id=eq.${encodeURIComponent(id)}&select=*`)
   return rows.length > 0 ? rows[0] : null

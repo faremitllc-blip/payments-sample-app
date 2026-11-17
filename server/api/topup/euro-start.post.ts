@@ -1,6 +1,6 @@
 import { randomInt, randomUUID } from 'node:crypto'
 import { rateLimit, requireUser } from '../../utils/auth'
-import { createTopupRow, getProfileRow, listBankAccounts, updateTopupRow } from '../../utils/db'
+import { createTopupRow, findSaltEdgeCustomer, getProfileRow, listBankAccounts, updateTopupRow } from '../../utils/db'
 import { openBankingConfigured, siteOrigin, startPayment } from '../../utils/openbanking'
 
 // Starts a euro top-up from the user's own bank, using open banking. The payment
@@ -79,6 +79,7 @@ export default defineEventHandler(async (event) => {
       payerEmail: user.email,
       origin: siteOrigin(event),
       userId: user.id,
+      knownCustomerId: await findSaltEdgeCustomer(user.id).catch(() => ''),
       clientIp: getRequestIP(event, { xForwardedFor: true }) || '',
     })
     await updateTopupRow(id, { webform_id: started.webformId })
