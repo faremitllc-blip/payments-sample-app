@@ -5,30 +5,30 @@
 
     <h2>1. What we collect</h2>
     <p>
-      Account details (name, email, login method), identity verification information where required, wallet addresses,
-      transaction history, the bank and payment details you give us to make or receive payments, and basic technical
-      data such as device, browser and IP address used to keep the service secure.
+      Account details (name, email, login method), identity verification information where required, the bank and payment
+      details you give us to send or receive money, your transaction history, and basic technical data such as device,
+      browser and IP address used to keep the service secure.
     </p>
 
     <h2>2. How we use it</h2>
     <p>
-      To create and run your account and wallet, process top ups and transfers, verify your identity, prevent fraud and
-      misuse, meet legal obligations, give you support, and improve Mondo. We do not sell your personal data.
+      To create and run your account, process payments and transfers, set up your virtual bank account, verify your
+      identity, prevent fraud and misuse, meet legal obligations, give you support, and improve Mondo. We do not sell your
+      personal data.
     </p>
 
     <h2>3. Who we share it with</h2>
     <p>
-      Only with providers that help us run the service: our wallet and payment partners, identity verification and
-      open banking providers, card and on-ramp providers, hosting and database providers, and the AI assistant provider
-      when you use the assistant. They may use your data only to provide their service to us, and they have their own
-      privacy policies. We also share information when the law requires it. Blockchain transactions are public by
-      nature, and we cannot remove them.
+      Only with providers that help us run the service: our open banking provider, our banking partner Bridge and its
+      partner institutions (who also carry out identity checks), and our hosting and database providers. They may use
+      your data only to provide their service to us, and they have their own privacy policies. We also share information
+      when the law requires it, for example with regulators or law enforcement.
     </p>
 
-    <h2>4. Card and bank details</h2>
+    <h2>4. Bank access</h2>
     <p>
-      Card payments are made on our payment partner's own secure page. We do not store full card numbers or card
-      security codes.
+      When you pay by open banking you approve the payment on your own bank's page. We never see or store your online
+      banking password.
     </p>
 
     <h2>5. How long we keep it</h2>

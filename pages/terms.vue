@@ -5,9 +5,9 @@
 
     <h2>1. About Mondo</h2>
     <p>
-      Mondo ("we", "us") provides a service that lets you hold and move USDC and other digital dollars and euros, top up
-      from your bank or card, and send money to other people. By creating an account or using Mondo you agree to these
-      terms. If you do not agree, please do not use the service.
+      Mondo ("we", "us") provides money transfer (remittance) services using open banking, and virtual bank accounts
+      provided through our banking partner, Bridge. By creating an account or using Mondo you agree to these terms. If
+      you do not agree, please do not use the service.
     </p>
 
     <h2>2. Your account</h2>
@@ -19,52 +19,46 @@
 
     <h2>3. Identity checks</h2>
     <p>
-      We and our partners may ask you to verify your identity before you use some features, and we may limit or refuse
-      a service where the law requires it or where we cannot verify you.
+      We and our partners must verify your identity before you can use some features, including virtual bank accounts.
+      We may limit or refuse a service where the law requires it or where we cannot verify you.
     </p>
 
     <h2>4. How the service works</h2>
     <p>
-      Your wallet is created and operated for you through our wallet provider. USDC is a digital currency issued by a
-      third party and is not a bank deposit or insured by any government scheme. Top ups, card purchases and bank
-      transfers are carried out by independent payment partners, each with its own terms. Fees, limits and processing
-      times are shown before you confirm a payment.
+      Payments are made from your own bank account through an open banking provider, which asks you to approve each
+      payment with your bank. Virtual bank accounts and the related account services are provided by Bridge and its
+      partner institutions, and are subject to their terms as well as these. Fees, exchange rates, limits and expected
+      delivery times are shown before you confirm a payment.
     </p>
 
-    <h2>5. Transfers cannot be undone</h2>
+    <h2>5. Payments cannot always be undone</h2>
     <p>
-      Transfers on a blockchain are final. Check the address, the amount and the network carefully before you confirm.
-      We cannot reverse or recover a transfer sent to the wrong address or the wrong network.
+      Check the recipient's details and the amount carefully before you confirm. Once a transfer has been sent we may not
+      be able to cancel or recover it, for example if the details you entered were wrong.
     </p>
 
     <h2>6. Things you must not do</h2>
     <p>
       You must not use Mondo for anything illegal, for fraud, money laundering or sanctions evasion, to harm others, or
       to interfere with the service. We may suspend or close accounts that break these rules or that we reasonably
-      believe are being misused.
+      believe are being misused, and we may report suspicious activity as the law requires.
     </p>
 
-    <h2>7. Risks</h2>
-    <p>
-      Digital assets can lose value, and networks and providers can be delayed or unavailable. Nothing in Mondo is
-      financial, legal or tax advice. You are responsible for any taxes that apply to you.
-    </p>
-
-    <h2>8. Our responsibility</h2>
+    <h2>7. Our responsibility</h2>
     <p>
       We provide the service with reasonable care but cannot promise it will always be available or error free. To the
-      extent the law allows, we are not responsible for losses caused by third-party providers, blockchain networks,
-      incorrect details you enter, or events outside our control. Nothing in these terms limits liability that cannot be
-      limited by law.
+      extent the law allows, we are not responsible for losses caused by banks, payment and account partners, incorrect
+      details you enter, or events outside our control. Nothing in these terms limits liability that cannot be limited by
+      law. Nothing in Mondo is financial, legal or tax advice.
     </p>
 
-    <h2>9. Changes and ending</h2>
+    <h2>8. Changes and ending</h2>
     <p>
       We may update these terms and will tell you about important changes. If you keep using Mondo after a change you
       accept it. You can stop using Mondo at any time, and withdraw any balance you hold before closing your account.
     </p>
 
-    <h2>10. Contact</h2>
+    <h2>9. Contact</h2>
     <p>
       Questions about these terms: <a href="mailto:support@getmondoapp.com">support@getmondoapp.com</a>. See also our
       <NuxtLink to="/privacy">Privacy Policy</NuxtLink>.
