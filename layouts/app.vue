@@ -51,6 +51,10 @@
           {{ appName }} runs in test mode on a test network. No real money is
           moved, and test USDC has no value.
         </p>
+        <p class="fm-legal-links">
+          <NuxtLink to="/terms">Terms of Service</NuxtLink> ·
+          <NuxtLink to="/privacy">Privacy Policy</NuxtLink>
+        </p>
       </footer>
     </v-main>
   </v-app>
