@@ -78,6 +78,7 @@ export default defineEventHandler(async (event) => {
       payerName,
       payerEmail: user.email,
       origin: siteOrigin(event),
+      userId: user.id,
       clientIp: getRequestIP(event, { xForwardedFor: true }) || '',
     })
     await updateTopupRow(id, { webform_id: started.webformId })

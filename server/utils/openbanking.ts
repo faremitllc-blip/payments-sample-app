@@ -54,6 +54,7 @@ export interface StartInput {
   payerEmail: string
   origin: string
   clientIp?: string
+  userId?: string
 }
 
 export async function startPayment(topupId: string, p: StartInput) {
@@ -64,6 +65,8 @@ export async function startPayment(topupId: string, p: StartInput) {
       iban: p.iban,
       // The Bridge deposit message, so Bridge can match the transfer to the account.
       reference: p.purpose,
+      email: p.payerEmail,
+      userId: p.userId || '',
       clientIp: p.clientIp || '',
       returnUri: `${p.origin}/topup/return?t=${encodeURIComponent(topupId)}`,
     })

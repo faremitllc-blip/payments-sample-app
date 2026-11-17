@@ -2,19 +2,19 @@ import { createSign } from 'node:crypto'
 import { cleanCredential, isSwitchOn } from './clean'
 
 /**
- * Server-side client for Salt Edge Payment Initiation (open banking). The App ID, secret and
+ * Server-side client for Salt Edge Partners Payment Initiation (open banking). The App ID, secret and
  * signing key come from environment variables only and never reach the browser or the code.
  *
- * Flow: create a one-time customer, ask for a SEPA payment straight into the user's own Bridge
+ * Flow: create or find the customer (a "lead"), ask for a SEPA payment straight into the user's own Bridge
  * euro IBAN with "Pay with Connect", send the user to Salt Edge's hosted bank page, and later
  * read how the payment ended. Live accounts must sign every request with an RSA key.
  */
 
-const BASE = 'https://www.saltedge.com/api/payments/v1'
+const BASE = 'https://www.saltedge.com/api/partners/v1'
 const CONNECT_PAGE = 'https://www.saltedge.com/payments/connect'
 
 export interface SaltEdgeStarted {
-  /** Stored in the top-up row: "se:<top-up id>:<connect token>". */
+  /** Stored in the top-up row: "se:<top-up id>:<connect token>:<customer id>". */
   webformId: string
   url: string
   expiresAt: string
@@ -56,16 +56,10 @@ export function isSaltEdgeRef(stored: string | null | undefined): boolean {
   return typeof stored === 'string' && stored.startsWith('se:')
 }
 
-/** "se:<top-up id>:<connect token>[:<payment id>]" */
-function parseStored(stored: string): { topupId: string; token: string; paymentId: string } {
-  const [, topupId = '', token = '', paymentId = ''] = stored.split(':')
-  return { topupId, token, paymentId }
-}
-
-/** Adds the payment id Salt Edge sent the customer back with. */
-export function withPaymentId(stored: string, paymentId: string): string {
-  const p = parseStored(stored)
-  return `se:${p.topupId}:${p.token}:${paymentId}`
+/** "se:<top-up id>:<connect token>:<customer id>" */
+function parseStored(stored: string): { topupId: string; token: string; customerId: string } {
+  const [, topupId = '', token = '', customerId = ''] = stored.split(':')
+  return { topupId, token, customerId }
 }
 
 function refusal(err: any): string {
@@ -121,28 +115,32 @@ export async function startSaltEdgePayment(
     recipientName: string
     iban: string
     reference: string
+    email: string
+    userId: string
     clientIp: string
     returnUri: string
   },
 ): Promise<SaltEdgeStarted> {
-  // One customer per top-up, so nothing has to be remembered between payments.
-  const customer = await call<{ data?: { id?: string } }>('/customers', 'POST', {
-    data: { identifier: `mondo-${topupId}` },
+  // Creates the customer, or returns the one that already exists for this email.
+  const lead = await call<{ data?: { customer_id?: string } }>('/leads', 'POST', {
+    data: { email: p.email, identifier: p.userId },
   })
-  const customerId = customer?.data?.id
-  if (!customerId) throw createError({ statusCode: 502, statusMessage: 'The bank service gave an unexpected answer' })
+  const customerId = String(lead?.data?.customer_id || '')
+  if (!/^[0-9]{1,30}$/.test(customerId)) {
+    throw createError({ statusCode: 502, statusMessage: 'The bank service gave an unexpected answer' })
+  }
 
   const ip = /^[0-9a-fA-F:.]{3,45}$/.test(p.clientIp) ? p.clientIp : '127.0.0.1'
   const reference = p.reference.slice(0, 140)
-  const res = await call<{ data?: { connect_url?: string; expires_at?: string } }>('/payments/connect', 'POST', {
+  const country = p.iban.slice(0, 2).toUpperCase()
+  const res = await call<{ data?: { connect_url?: string; expires_at?: string } }>('/payments/sessions', 'POST', {
     data: {
       customer_id: customerId,
       template_identifier: 'SEPA',
       show_consent_confirmation: true,
-      return_payment_id: true,
-      return_error_class: true,
       return_to: p.returnUri,
       payment_attributes: {
+        // Used to find this payment again afterwards.
         end_to_end_id: topupId.replace(/-/g, ''),
         reference,
         description: reference,
@@ -152,6 +150,7 @@ export async function startSaltEdgePayment(
         currency_code: 'EUR',
         creditor_iban: p.iban,
         creditor_name: p.recipientName,
+        creditor_country_code: /^[A-Z]{2}$/.test(country) ? country : 'DE',
       },
     },
   })
@@ -170,7 +169,7 @@ export async function startSaltEdgePayment(
     throw createError({ statusCode: 502, statusMessage: 'The bank service gave an unexpected address' })
   }
   return {
-    webformId: `se:${topupId}:${token}`,
+    webformId: `se:${topupId}:${token}:${customerId}`,
     url: `${CONNECT_PAGE}?token=${encodeURIComponent(token)}`,
     expiresAt: res?.data?.expires_at || new Date(Date.now() + 15 * 60_000).toISOString(),
   }
@@ -183,11 +182,28 @@ export function saltEdgeLink(stored: string): string {
 
 /** Reads how the payment is going. Never changes anything at the bank. */
 export async function checkSaltEdgePayment(stored: string): Promise<SaltEdgeCheck> {
-  const { paymentId } = parseStored(stored)
-  // Until the customer comes back we do not know the payment id.
-  if (!/^[0-9]{1,30}$/.test(paymentId)) return { status: 'waiting' }
-  const res = await call<{ data?: { status?: string } }>(`/payments/${paymentId}`, 'GET')
-  const state = String(res?.data?.status || '').toLowerCase()
+  const { topupId, customerId } = parseStored(stored)
+  if (!/^[0-9]{1,30}$/.test(customerId) || !topupId) return { status: 'waiting' }
+  const endToEnd = topupId.replace(/-/g, '')
+  // The customer's payments, oldest first. Find the one made for this top-up.
+  let found: any = null
+  let from = ''
+  for (let page = 0; page < 5; page++) {
+    const res = await call<{ data?: any[]; meta?: { next_id?: string | null } }>(
+      `/payments?customer_id=${customerId}${from ? `&from_id=${encodeURIComponent(from)}` : ''}`,
+      'GET',
+    )
+    for (const item of res?.data || []) {
+      if (item?.payment_attributes?.end_to_end_id === endToEnd) found = item
+    }
+    const next = res?.meta?.next_id
+    if (!next) break
+    from = String(next)
+  }
+  // The customer has not got as far as a payment yet.
+  if (!found) return { status: 'waiting' }
+  const paymentId = String(found.id || '')
+  const state = String(found.status || '').toLowerCase()
   if (state === 'accepted') return { status: 'sent', paymentId }
   if (state === 'deleted') return { status: 'cancelled', paymentId }
   if (state === 'rejected' || state === 'failed') {

@@ -1,6 +1,5 @@
 import { requireUser } from '../../utils/auth'
 import { findTopupForReturn, getTopupRow, updateTopupRow } from '../../utils/db'
-import { isSaltEdgeRef, withPaymentId } from '../../utils/saltedge'
 import { checkPayment } from '../../utils/openbanking'
 
 // Used by the page the bank sends the customer back to. It asks the payment service how the
@@ -11,14 +10,9 @@ export default defineEventHandler(async (event) => {
   const paymentId = String(query.payment_id || '')
   const topupId = String(query.t || '')
   // Salt Edge sends the customer back with our top-up id and its own payment id.
-  let row = /^[0-9a-f-]{36}$/i.test(topupId)
+  const row = /^[0-9a-f-]{36}$/i.test(topupId)
     ? await getTopupRow(user.id, topupId)
     : await findTopupForReturn(user.id, paymentId)
-  if (row && isSaltEdgeRef(row.webform_id) && /^[0-9]{1,30}$/.test(paymentId)) {
-    const stored = withPaymentId(String(row.webform_id), paymentId)
-    await updateTopupRow(row.id, { webform_id: stored })
-    row = { ...row, webform_id: stored }
-  }
   if (!row) {
     throw createError({ statusCode: 404, statusMessage: 'Top-up not found' })
   }
