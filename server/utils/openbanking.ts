@@ -2,6 +2,13 @@ import type { H3Event } from 'h3'
 import { cleanCredential } from './clean'
 import { checkEuroPayment, openBankingMode, startEuroPayment, webformLink } from './finapi'
 import {
+  checkSaltEdgePayment,
+  isSaltEdgeRef,
+  saltEdgeConfigured,
+  saltEdgeLink,
+  startSaltEdgePayment,
+} from './saltedge'
+import {
   checkTrueLayerPayment,
   isTrueLayerRef,
   startTrueLayerPayment,
@@ -14,15 +21,19 @@ import {
  * unless OPENBANKING_PROVIDER=finapi. A payment remembers its own provider, so an
  * older finAPI top-up still works after switching.
  */
-export function activeProvider(): 'truelayer' | 'finapi' {
+export function activeProvider(): 'saltedge' | 'truelayer' | 'finapi' {
   const choice = cleanCredential(useRuntimeConfig().openbankingProvider).toLowerCase()
   if (choice === 'finapi') return 'finapi'
   if (choice === 'truelayer') return 'truelayer'
+  if (choice === 'saltedge') return 'saltedge'
+  if (saltEdgeConfigured()) return 'saltedge'
   return trueLayerConfigured() ? 'truelayer' : 'finapi'
 }
 
 export function openBankingConfigured(): boolean {
-  return activeProvider() === 'truelayer' ? trueLayerConfigured() : openBankingMode().configured
+  const p = activeProvider()
+  if (p === 'saltedge') return saltEdgeConfigured()
+  return p === 'truelayer' ? trueLayerConfigured() : openBankingMode().configured
 }
 
 /** The site address as the visitor sees it, e.g. https://getmondoapp.com. */
@@ -42,9 +53,21 @@ export interface StartInput {
   payerName: string
   payerEmail: string
   origin: string
+  clientIp?: string
 }
 
 export async function startPayment(topupId: string, p: StartInput) {
+  if (activeProvider() === 'saltedge') {
+    return await startSaltEdgePayment(topupId, {
+      amount: p.amount,
+      recipientName: p.recipientName,
+      iban: p.iban,
+      // The Bridge deposit message, so Bridge can match the transfer to the account.
+      reference: p.purpose,
+      clientIp: p.clientIp || '',
+      returnUri: `${p.origin}/topup/return?t=${encodeURIComponent(topupId)}`,
+    })
+  }
   if (activeProvider() === 'truelayer') {
     return await startTrueLayerPayment(topupId, {
       amount: p.amount,
@@ -67,16 +90,18 @@ export async function startPayment(topupId: string, p: StartInput) {
 }
 
 export async function checkPayment(topupId: string, stored: string) {
+  if (isSaltEdgeRef(stored)) return await checkSaltEdgePayment(stored)
   if (isTrueLayerRef(stored)) return await checkTrueLayerPayment(stored)
   return await checkEuroPayment(topupId, stored)
 }
 
 /** How long the bank page link works, in minutes. */
 export function linkMinutes(stored: string | null | undefined): number {
-  return isTrueLayerRef(stored) ? 15 : 20
+  return isSaltEdgeRef(stored) || isTrueLayerRef(stored) ? 15 : 20
 }
 
 export function paymentLink(stored: string, origin: string): string {
+  if (isSaltEdgeRef(stored)) return saltEdgeLink(stored)
   if (isTrueLayerRef(stored)) return trueLayerLink(stored, `${origin}/topup/return`)
   return webformLink(stored)
 }

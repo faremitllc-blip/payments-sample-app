@@ -47,11 +47,17 @@ const amount = ref('')
 let timer: ReturnType<typeof setTimeout> | null = null
 
 async function check(attempt: number) {
+  // The bank service reports a problem before any payment was made.
+  if (typeof route.query.error_class === 'string' && route.query.error_class) {
+    return void (state.value = 'stopped')
+  }
   try {
     const paymentId = typeof route.query.payment_id === 'string' ? route.query.payment_id : ''
-    const r = await api<{ status: string; amount: number }>(
-      `/api/topup/euro-result${paymentId ? `?payment_id=${encodeURIComponent(paymentId)}` : ''}`,
-    )
+    const topupId = typeof route.query.t === 'string' ? route.query.t : ''
+    const params = new URLSearchParams()
+    if (paymentId) params.set('payment_id', paymentId)
+    if (topupId) params.set('t', topupId)
+    const r = await api<{ status: string; amount: number }>(`/api/topup/euro-result?${params.toString()}`)
     if (r.amount) amount.value = r.amount.toFixed(2)
     if (r.status === 'sent') return void (state.value = 'sent')
     if (r.status === 'failed' || r.status === 'cancelled') return void (state.value = 'stopped')

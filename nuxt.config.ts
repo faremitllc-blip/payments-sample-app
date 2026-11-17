@@ -109,6 +109,9 @@ export default defineNuxtConfig({
     truelayerClientSecret: process.env.TRUELAYER_CLIENT_SECRET || '',
     truelayerKid: process.env.TRUELAYER_KID || '',
     truelayerPrivateKey: process.env.TRUELAYER_PRIVATE_KEY || '',
+    saltedgeAppId: process.env.SALTEDGE_APP_ID || '',
+    saltedgeSecret: process.env.SALTEDGE_SECRET || '',
+    saltedgePrivateKey: process.env.SALTEDGE_PRIVATE_KEY || '',
     openbankingProvider: process.env.OPENBANKING_PROVIDER || '',
     // Card payments (getMondo). Server only.
     getmondoAccountId: process.env.GETMONDO_COMPANY_ACCOUNT_ID || '',
