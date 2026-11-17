@@ -145,7 +145,7 @@ export async function startSaltEdgePayment(
         customer_id: customerId,
         template_identifier: 'SEPA',
         return_error_class: true,
-        attempt: { return_to: p.returnUri, locale: 'EN' },
+        attempt: { return_to: p.returnUri, locale: 'en' },
         payment_attributes: {
           end_to_end_id: topupId.replace(/-/g, ''),
           reference,
