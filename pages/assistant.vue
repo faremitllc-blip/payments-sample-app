@@ -19,7 +19,7 @@
     <div v-else class="mo-ai-thread" role="log" aria-live="polite" aria-label="Conversation">
       <template v-for="turn in turns" :key="turn.key">
         <p v-if="turn.kind === 'user'" class="mo-msg is-user">{{ turn.text }}</p>
-        <p v-else-if="turn.kind === 'ai'" class="mo-msg is-ai">{{ turn.text }}</p>
+        <p v-else-if="turn.kind === 'ai'" class="mo-msg is-ai">{{ shown(turn) }}</p>
         <p v-else-if="turn.kind === 'look'" class="mo-look">
           <v-icon size="16" aria-hidden="true">mdi-creation</v-icon>{{ turn.text }}
         </p>
@@ -152,6 +152,60 @@ function startOver() {
   reset()
   draft.value = ''
 }
+
+// New answers appear as if typed, so the reply feels instant instead of arriving in one lump.
+const typed = reactive<Record<string, number>>({})
+const known = new Set<string>(turns.value.map((t) => t.key))
+let typer: ReturnType<typeof setInterval> | null = null
+
+function shown(turn: { key: string; text?: string }): string {
+  const text = turn.text || ''
+  const n = typed[turn.key]
+  return n === undefined || n >= text.length ? text : text.slice(0, n)
+}
+
+function runTyper() {
+  if (typer) return
+  typer = setInterval(() => {
+    let active = false
+    for (const t of turns.value) {
+      const n = typed[t.key]
+      const len = (t.text || '').length
+      if (t.kind === 'ai' && n !== undefined && n < len) {
+        typed[t.key] = Math.min(len, n + Math.max(3, Math.ceil(len / 90)))
+        active = true
+        break
+      }
+    }
+    end.value?.scrollIntoView({ block: 'end' })
+    if (!active && typer) {
+      clearInterval(typer)
+      typer = null
+    }
+  }, 18)
+}
+
+watch(
+  () => turns.value.map((t) => t.key).join(','),
+  () => {
+    // A new chat starts the numbering again, so forget what was seen.
+    if (turns.value.length === 0) {
+      known.clear()
+      for (const k of Object.keys(typed)) delete typed[k]
+    }
+    for (const t of turns.value) {
+      if (!known.has(t.key)) {
+        known.add(t.key)
+        if (t.kind === 'ai' && (t.text || '').length > 0) typed[t.key] = 0
+      }
+    }
+    if (Object.values(typed).length > 0) runTyper()
+  },
+)
+
+onBeforeUnmount(() => {
+  if (typer) clearInterval(typer)
+})
 
 watch(
   () => [turns.value.length, busy.value, error.value],

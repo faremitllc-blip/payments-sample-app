@@ -128,21 +128,35 @@ export async function callGemini(options: {
       break
     }
     try {
-      return await $fetch<any>(
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-        {
-          method: 'POST',
-          headers: { 'x-goog-api-key': options.apiKey, 'content-type': 'application/json' },
-          body: {
-            systemInstruction: { parts: [{ text: options.system }] },
-            contents: toGeminiContents(options.messages),
-            tools: options.tools,
-            toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
-            generationConfig: { maxOutputTokens: 1200, temperature: 0.4 },
+      const call = (thinking: boolean) =>
+        $fetch<any>(
+          `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+          {
+            method: 'POST',
+            headers: { 'x-goog-api-key': options.apiKey, 'content-type': 'application/json' },
+            body: {
+              systemInstruction: { parts: [{ text: options.system }] },
+              contents: toGeminiContents(options.messages),
+              tools: options.tools,
+              toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
+              generationConfig: {
+                maxOutputTokens: 1200,
+                temperature: 0.4,
+                // Little hidden "thinking" keeps answers quick. Chat does not need more.
+                ...(thinking ? { thinkingConfig: { thinkingLevel: 'low' } } : {}),
+              },
+            },
+            timeout: Math.min(16_000, deadline - Date.now()),
           },
-          timeout: Math.min(16_000, left),
-        },
-      )
+        )
+      try {
+        return await call(true)
+      } catch (err: any) {
+        // A model that does not know this setting says so with a 400. Ask again without it.
+        const said = String(err?.data?.error?.message || '').toLowerCase()
+        if (Number(err?.statusCode) === 400 && said.includes('think')) return await call(false)
+        throw err
+      }
     } catch (err: any) {
       lastStatus = Number(err?.statusCode) || 0
       lastDetail = String(err?.data?.error?.message || err?.message || '').slice(0, 160)
