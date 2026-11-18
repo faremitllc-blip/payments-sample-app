@@ -16,7 +16,12 @@ export default defineNuxtConfig({
       title: 'Mondo',
       meta: [
         { charset: 'utf-8' },
-        { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+        { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
+        { name: 'theme-color', content: '#2554e8' },
+        { name: 'mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-capable', content: 'yes' },
+        { name: 'apple-mobile-web-app-title', content: 'Mondo' },
+        { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
         {
           name: 'description',
           content: 'Mondo: US, euro and pound bank details and a USDC wallet in one app.',
@@ -34,6 +39,7 @@ export default defineNuxtConfig({
         { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/favicon-32.png' },
         { rel: 'icon', href: '/favicon.ico', sizes: 'any' },
         { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
+        { rel: 'manifest', href: '/manifest.webmanifest' },
         // Open the connections to the icon and font hosts early.
         { rel: 'preconnect', href: 'https://cdn.jsdelivr.net', crossorigin: '' },
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
@@ -169,6 +175,8 @@ export default defineNuxtConfig({
 
   routeRules: {
     '/**': { headers: { 'cache-control': 'no-cache' } },
+    '/sw.js': { headers: { 'cache-control': 'no-cache', 'service-worker-allowed': '/' } },
+    '/manifest.webmanifest': { headers: { 'content-type': 'application/manifest+json' } },
     '/_nuxt/**': {
       headers: { 'cache-control': 'public, max-age=31536000, immutable' },
     },

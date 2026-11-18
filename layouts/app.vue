@@ -52,6 +52,7 @@
           moved, and test USDC has no value.
         </p>
         <p class="fm-legal-links">
+          <NuxtLink to="/install">Install app</NuxtLink> ·
           <NuxtLink to="/terms">Terms of Service</NuxtLink> ·
           <NuxtLink to="/privacy">Privacy Policy</NuxtLink>
         </p>
