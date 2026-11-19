@@ -120,6 +120,8 @@ export async function startSaltEdgePayment(
     knownCustomerId?: string
     clientIp: string
     returnUri: string
+    providerCode?: string
+    country?: string
   },
 ): Promise<SaltEdgeStarted> {
   // Reuse the customer made for this user's earlier top-up, otherwise create one.
@@ -145,6 +147,15 @@ export async function startSaltEdgePayment(
         customer_id: customerId,
         template_identifier: 'SEPA',
         return_error_class: true,
+        ...(/^[a-z0-9_-]{2,80}$/i.test(p.providerCode || '')
+          ? {
+              // The customer already picked a bank in Mondo, so go straight to it.
+              provider: { code: p.providerCode, include_sandboxes: false },
+              widget: { skip_provider_selection: true },
+            }
+          : /^[A-Z]{2}$/.test(p.country || '')
+            ? { widget: { popular_providers_country: p.country } }
+            : {}),
         attempt: { return_to: p.returnUri, locale: 'en' },
         payment_attributes: {
           end_to_end_id: topupId.replace(/-/g, ''),
@@ -205,4 +216,49 @@ export async function checkSaltEdgePayment(stored: string): Promise<SaltEdgeChec
   }
   // initiated, authorizing, authorized: still going.
   return { status: 'waiting', paymentId }
+}
+
+
+export interface SaltEdgeBank {
+  code: string
+  name: string
+  logo: string
+}
+
+const BANK_CACHE = new Map<string, { at: number; banks: SaltEdgeBank[] }>()
+const PAYABLE = new Set(['SEPA', 'SEPA_INSTANT', 'SEPA_INSTANT_OR_SEPA'])
+
+/** Banks in a country that can take a euro (SEPA) payment, from Salt Edge. Kept for an hour. */
+export async function listSaltEdgeBanks(country: string): Promise<SaltEdgeBank[]> {
+  const cc = country.toUpperCase()
+  if (!/^[A-Z]{2}$/.test(cc)) return []
+  const hit = BANK_CACHE.get(cc)
+  if (hit && Date.now() - hit.at < 3_600_000) return hit.banks
+
+  const banks: SaltEdgeBank[] = []
+  let from = ''
+  for (let page = 0; page < 6; page++) {
+    const q =
+      `country_code=${cc}&include_pis_fields=true&include_sandboxes=false&exclude_inactive=true&per_page=100` +
+      (from ? `&from_id=${encodeURIComponent(from)}` : '')
+    const res = await call<{ data?: any[]; meta?: { next_id?: string | null } }>(`/providers?${q}`, 'GET')
+    for (const item of res?.data || []) {
+      const templates: unknown[] = Array.isArray(item?.payment_templates) ? item.payment_templates : []
+      if (!templates.some((t) => PAYABLE.has(String(t)))) continue
+      const code = String(item?.code || '')
+      if (!/^[a-z0-9_-]{2,80}$/i.test(code) || String(item?.status || 'active') !== 'active') continue
+      const logo = String(item?.logo_url || '')
+      banks.push({
+        code,
+        name: String(item?.name || code).slice(0, 80),
+        logo: /^https:\/\//.test(logo) ? logo : '',
+      })
+    }
+    const next = res?.meta?.next_id
+    if (!next) break
+    from = String(next)
+  }
+  banks.sort((a, b) => a.name.localeCompare(b.name))
+  BANK_CACHE.set(cc, { at: Date.now(), banks })
+  return banks
 }

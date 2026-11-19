@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
   if (!openBankingConfigured()) {
     throw createError({ statusCode: 503, statusMessage: 'Open banking is not set up on the server yet' })
   }
-  const b = (await readBody<{ amount?: unknown }>(event)) || {}
+  const b = (await readBody<{ amount?: unknown; provider?: unknown; country?: unknown }>(event)) || {}
   const amount = Math.round(Number(b.amount) * 100) / 100
   if (!Number.isFinite(amount) || amount < 1 || amount > max) {
     throw createError({
@@ -81,6 +81,8 @@ export default defineEventHandler(async (event) => {
       userId: user.id,
       knownCustomerId: await findSaltEdgeCustomer(user.id).catch(() => ''),
       clientIp: getRequestIP(event, { xForwardedFor: true }) || '',
+      providerCode: typeof b.provider === 'string' ? b.provider.trim() : undefined,
+      country: typeof b.country === 'string' ? b.country.trim().toUpperCase() : undefined,
     })
     await updateTopupRow(id, { webform_id: started.webformId })
     return { id, code, expiresAt: started.expiresAt }

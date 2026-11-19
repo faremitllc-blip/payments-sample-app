@@ -20,7 +20,71 @@
           persistent-hint
           class="mb-4"
         />
-        <v-btn type="submit" color="primary" variant="flat" :loading="busy" :disabled="!validAmount">Continue</v-btn>
+
+        <div class="mo-banks">
+          <div class="mo-banks-head">
+            <strong>Your bank</strong>
+            <v-select
+              v-model="country"
+              :items="countryItems"
+              item-title="title"
+              item-value="value"
+              density="compact"
+              variant="outlined"
+              hide-details
+              class="mo-country"
+              aria-label="Country"
+              @update:model-value="loadBanks"
+            />
+          </div>
+
+          <p v-if="loadingBanks" class="mo-muted">Loading banks…</p>
+          <template v-else-if="allBanks.length">
+            <div v-if="topBanks.length && !query.trim()" class="mo-bank-grid">
+              <button
+                v-for="b in topBanks"
+                :key="b.code"
+                type="button"
+                class="mo-bank"
+                :class="{ on: provider === b.code }"
+                @click="pick(b.code)"
+              >
+                <img v-if="b.logo" :src="b.logo" alt="" loading="lazy" />
+                <span>{{ b.name }}</span>
+              </button>
+            </div>
+            <v-text-field
+              v-model="query"
+              label="Search for another bank"
+              prepend-inner-icon="mdi-magnify"
+              density="compact"
+              variant="outlined"
+              hide-details
+              clearable
+              class="mt-3"
+            />
+            <div v-if="query.trim()" class="mo-bank-list" role="listbox" aria-label="Banks">
+              <button
+                v-for="b in found"
+                :key="b.code"
+                type="button"
+                class="mo-bank-row"
+                :class="{ on: provider === b.code }"
+                role="option"
+                :aria-selected="provider === b.code"
+                @click="pick(b.code)"
+              >
+                <img v-if="b.logo" :src="b.logo" alt="" loading="lazy" />
+                <span>{{ b.name }}</span>
+              </button>
+              <p v-if="!found.length" class="mo-muted pa-2">No bank found. You can also choose it on the next page.</p>
+            </div>
+            <p v-if="chosenName" class="mo-muted mt-2">Paying from <strong>{{ chosenName }}</strong></p>
+          </template>
+          <p v-else class="mo-muted">You will choose your bank on the next page.</p>
+        </div>
+
+        <v-btn type="submit" color="primary" variant="flat" :loading="busy" :disabled="!validAmount" class="mt-4">Continue</v-btn>
       </v-form>
       <p class="mo-muted mt-4">
         You need a EUR account on the <NuxtLink to="/bank">Bank page</NuxtLink> first.
@@ -88,6 +152,60 @@ const code = ref('')
 const copied = ref(false)
 const payLink = computed(() => (import.meta.client ? `${window.location.origin}/pay/${code.value}` : ''))
 const topup = ref<Topup | null>(null)
+
+interface Bank {
+  code: string
+  name: string
+  logo: string
+}
+const country = ref('')
+const allBanks = ref<Bank[]>([])
+const topBanks = ref<Bank[]>([])
+const provider = ref('')
+const query = ref('')
+const loadingBanks = ref(false)
+
+// Countries that can pay in euros, named in the customer's own language.
+const SEPA = 'AT BE BG HR CY CZ DK EE FI FR DE GR HU IE IT LV LT LU MT NL PL PT RO SK SI ES SE NO IS LI'.split(' ')
+const countryItems = computed(() => {
+  let names: Intl.DisplayNames | null = null
+  try {
+    names = new Intl.DisplayNames([navigator.language || 'en'], { type: 'region' })
+  } catch {
+    names = null
+  }
+  const items = SEPA.map((c) => ({ value: c, title: names?.of(c) || c }))
+  items.sort((a, b) => a.title.localeCompare(b.title))
+  return items
+})
+const found = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  return q ? allBanks.value.filter((b) => b.name.toLowerCase().includes(q)).slice(0, 30) : []
+})
+const chosenName = computed(() => allBanks.value.find((b) => b.code === provider.value)?.name || '')
+
+function pick(code: string) {
+  provider.value = provider.value === code ? '' : code
+}
+
+async function loadBanks() {
+  loadingBanks.value = true
+  provider.value = ''
+  query.value = ''
+  try {
+    const r = await api<{ country: string; banks: Bank[]; top: Bank[] }>(
+      `/api/topup/banks${country.value ? `?country=${encodeURIComponent(country.value)}` : ''}`,
+    )
+    if (r.country && SEPA.includes(r.country)) country.value = r.country
+    allBanks.value = r.banks || []
+    topBanks.value = r.top || []
+  } catch {
+    allBanks.value = []
+    topBanks.value = []
+  } finally {
+    loadingBanks.value = false
+  }
+}
 let timer: ReturnType<typeof setInterval> | null = null
 
 const validAmount = computed(() => {
@@ -126,7 +244,11 @@ async function start() {
   try {
     const res = await api<{ id: string; code: string }>('/api/topup/euro-start', {
       method: 'POST',
-      body: { amount: Number(amount.value) },
+      body: {
+        amount: Number(amount.value),
+        ...(provider.value ? { provider: provider.value } : {}),
+        ...(country.value ? { country: country.value } : {}),
+      },
     })
     code.value = res.code
     topup.value = { id: res.id, status: 'waiting', amount: Number(amount.value) }
@@ -158,6 +280,7 @@ async function copyLink() {
 }
 
 onMounted(async () => {
+  loadBanks()
   const id = String(route.query.id || '')
   if (/^[0-9a-f-]{36}$/i.test(id)) {
     await refresh(id)
@@ -169,4 +292,17 @@ onBeforeUnmount(stopPolling)
 
 <style scoped>
 .mo-eu-box { max-width: 560px; padding: 20px; }
+.mo-banks { margin: 4px 0 8px; }
+.mo-banks-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.mo-country { max-width: 220px; }
+.mo-bank-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.mo-bank, .mo-bank-row {
+  display: flex; align-items: center; gap: 10px; text-align: left; cursor: pointer;
+  padding: 10px 12px; border: 1px solid rgba(128, 128, 128, 0.35); border-radius: 12px;
+  background: transparent; color: inherit; font: inherit; min-height: 48px;
+}
+.mo-bank:hover, .mo-bank-row:hover { border-color: #2554e8; }
+.mo-bank.on, .mo-bank-row.on { border-color: #2554e8; box-shadow: 0 0 0 2px rgba(37, 84, 232, 0.25); }
+.mo-bank img, .mo-bank-row img { width: 28px; height: 28px; object-fit: contain; border-radius: 6px; flex: none; }
+.mo-bank-list { max-height: 260px; overflow-y: auto; margin-top: 8px; display: grid; gap: 6px; }
 </style>
