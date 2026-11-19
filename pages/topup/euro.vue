@@ -39,6 +39,7 @@
           </div>
 
           <p v-if="loadingBanks" class="mo-muted">Loading banks…</p>
+          <p v-else-if="!country" class="mo-muted">Choose the country where your bank is, then pick your bank.</p>
           <template v-else-if="allBanks.length">
             <div v-if="topBanks.length && !query.trim()" class="mo-bank-grid">
               <button
@@ -81,10 +82,14 @@
             </div>
             <p v-if="chosenName" class="mo-muted mt-2">Paying from <strong>{{ chosenName }}</strong></p>
           </template>
-          <p v-else class="mo-muted">You will choose your bank on the next page.</p>
+          <p v-else class="mo-muted">
+            You will choose your bank on the next page.
+            <span v-if="seen" class="mo-diag">({{ seen }})</span>
+          </p>
         </div>
 
-        <v-btn type="submit" color="primary" variant="flat" :loading="busy" :disabled="!validAmount" class="mt-4">Continue</v-btn>
+        <v-btn type="submit" color="primary" variant="flat" :loading="busy" :disabled="!validAmount || needsBank" class="mt-4">Continue</v-btn>
+        <p v-if="needsBank && validAmount" class="mo-muted mt-2">Pick your bank above to continue.</p>
       </v-form>
       <p class="mo-muted mt-4">
         You need a EUR account on the <NuxtLink to="/bank">Bank page</NuxtLink> first.
@@ -164,6 +169,7 @@ const topBanks = ref<Bank[]>([])
 const provider = ref('')
 const query = ref('')
 const loadingBanks = ref(false)
+const seen = ref('')
 
 // Countries that can pay in euros, named in the customer's own language.
 const SEPA = 'AT BE BG HR CY CZ DK EE FI FR DE GR HU IE IT LV LT LU MT NL PL PT RO SK SI ES SE NO IS LI'.split(' ')
@@ -182,6 +188,8 @@ const found = computed(() => {
   const q = query.value.trim().toLowerCase()
   return q ? allBanks.value.filter((b) => b.name.toLowerCase().includes(q)).slice(0, 30) : []
 })
+// With a bank list on screen, the customer must pick a bank, so the next page never opens empty.
+const needsBank = computed(() => allBanks.value.length > 0 && !provider.value)
 const chosenName = computed(() => allBanks.value.find((b) => b.code === provider.value)?.name || '')
 
 function pick(code: string) {
@@ -193,12 +201,15 @@ async function loadBanks() {
   provider.value = ''
   query.value = ''
   try {
-    const r = await api<{ country: string; banks: Bank[]; top: Bank[] }>(
+    const r = await api<{ country: string; banks: Bank[]; top: Bank[]; seen?: { total: number; templates: Record<string, number> } }>(
       `/api/topup/banks${country.value ? `?country=${encodeURIComponent(country.value)}` : ''}`,
     )
     if (r.country && SEPA.includes(r.country)) country.value = r.country
     allBanks.value = r.banks || []
     topBanks.value = r.top || []
+    seen.value = r.seen
+      ? `${r.country}: ${r.seen.total} banks listed by the provider; payment types ${Object.entries(r.seen.templates).map(([k, v]) => `${k}×${v}`).join(', ') || 'none'}`
+      : ''
   } catch {
     allBanks.value = []
     topBanks.value = []
@@ -292,10 +303,12 @@ onBeforeUnmount(stopPolling)
 
 <style scoped>
 .mo-eu-box { max-width: 560px; padding: 20px; }
+.mo-diag { font-size: 0.75rem; opacity: 0.7; }
 .mo-banks { margin: 4px 0 8px; }
 .mo-banks-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
 .mo-country { max-width: 220px; }
 .mo-bank-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+@media (max-width: 480px) { .mo-bank-grid { grid-template-columns: 1fr; } .mo-banks-head { flex-wrap: wrap; } .mo-country { max-width: none; width: 100%; } }
 .mo-bank, .mo-bank-row {
   display: flex; align-items: center; gap: 10px; text-align: left; cursor: pointer;
   padding: 10px 12px; border: 1px solid rgba(128, 128, 128, 0.35); border-radius: 12px;

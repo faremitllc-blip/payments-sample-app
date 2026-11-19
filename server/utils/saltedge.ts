@@ -139,13 +139,14 @@ export async function startSaltEdgePayment(
   const ip = /^[0-9a-fA-F:.]{3,45}$/.test(p.clientIp) ? p.clientIp : '127.0.0.1'
   const reference = p.reference.slice(0, 140)
   const country = p.iban.slice(0, 2).toUpperCase()
-  const res = await call<{ data?: { payment_url?: string; payment_id?: string | number; expires_at?: string } }>(
+  const create = (template: string) =>
+    call<{ data?: { payment_url?: string; payment_id?: string | number; expires_at?: string } }>(
     '/payments/create',
     'POST',
     {
       data: {
         customer_id: customerId,
-        template_identifier: 'SEPA',
+        template_identifier: template,
         return_error_class: true,
         ...(/^[a-z0-9_-]{2,80}$/i.test(p.providerCode || '')
           ? {
@@ -154,7 +155,7 @@ export async function startSaltEdgePayment(
               widget: { skip_provider_selection: true },
             }
           : /^[A-Z]{2}$/.test(p.country || '')
-            ? { widget: { popular_providers_country: p.country } }
+            ? { widget: { popular_providers_country: p.country, allowed_countries: [p.country] } }
             : {}),
         attempt: { return_to: p.returnUri, locale: 'en' },
         payment_attributes: {
@@ -172,6 +173,15 @@ export async function startSaltEdgePayment(
       },
     },
   )
+  // Many banks only take instant euro payments, so offer instant or standard first. If this
+  // account does not have that type switched on, fall back to the standard one.
+  let res
+  try {
+    res = await create('SEPA_INSTANT_OR_SEPA')
+  } catch (err: any) {
+    if (Number(err?.statusCode) !== 400) throw err
+    res = await create('SEPA')
+  }
   const payUrl = String(res?.data?.payment_url || '')
   const paymentId = String(res?.data?.payment_id || '')
   let token = ''
@@ -225,15 +235,21 @@ export interface SaltEdgeBank {
   logo: string
 }
 
-const BANK_CACHE = new Map<string, { at: number; banks: SaltEdgeBank[] }>()
+const BANK_CACHE = new Map<string, { at: number; banks: SaltEdgeBank[]; seen: SaltEdgeSeen }>()
+
+export interface SaltEdgeSeen {
+  total: number
+  templates: Record<string, number>
+}
 const PAYABLE = new Set(['SEPA', 'SEPA_INSTANT', 'SEPA_INSTANT_OR_SEPA'])
 
 /** Banks in a country that can take a euro (SEPA) payment, from Salt Edge. Kept for an hour. */
-export async function listSaltEdgeBanks(country: string): Promise<SaltEdgeBank[]> {
+export async function listSaltEdgeBanks(country: string): Promise<{ banks: SaltEdgeBank[]; seen: SaltEdgeSeen }> {
   const cc = country.toUpperCase()
-  if (!/^[A-Z]{2}$/.test(cc)) return []
+  const seen: SaltEdgeSeen = { total: 0, templates: {} }
+  if (!/^[A-Z]{2}$/.test(cc)) return { banks: [], seen }
   const hit = BANK_CACHE.get(cc)
-  if (hit && Date.now() - hit.at < 3_600_000) return hit.banks
+  if (hit && Date.now() - hit.at < 3_600_000) return { banks: hit.banks, seen: hit.seen }
 
   const banks: SaltEdgeBank[] = []
   let from = ''
@@ -244,6 +260,8 @@ export async function listSaltEdgeBanks(country: string): Promise<SaltEdgeBank[]
     const res = await call<{ data?: any[]; meta?: { next_id?: string | null } }>(`/providers?${q}`, 'GET')
     for (const item of res?.data || []) {
       const templates: unknown[] = Array.isArray(item?.payment_templates) ? item.payment_templates : []
+      seen.total++
+      for (const t of templates) seen.templates[String(t)] = (seen.templates[String(t)] || 0) + 1
       if (!templates.some((t) => PAYABLE.has(String(t)))) continue
       const code = String(item?.code || '')
       if (!/^[a-z0-9_-]{2,80}$/i.test(code) || String(item?.status || 'active') !== 'active') continue
@@ -259,6 +277,6 @@ export async function listSaltEdgeBanks(country: string): Promise<SaltEdgeBank[]
     from = String(next)
   }
   banks.sort((a, b) => a.name.localeCompare(b.name))
-  BANK_CACHE.set(cc, { at: Date.now(), banks })
-  return banks
+  BANK_CACHE.set(cc, { at: Date.now(), banks, seen })
+  return { banks, seen }
 }
