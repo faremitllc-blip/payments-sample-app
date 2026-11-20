@@ -1,0 +1,97 @@
+<template>
+  <div class="fm-wrap fm-app-main">
+    <h1 class="fm-page-title">Top up</h1>
+    <p class="fm-lede">Choose where the money comes from to fill your currency wallets.</p>
+
+    <div class="mo-top-list">
+      <NuxtLink :to="backLink" class="mo-card mo-top-item mo-top-back">
+        <v-icon icon="mdi-arrow-u-left-top" size="28" />
+        <div>
+          <strong>Move back to USDC wallet</strong>
+          <p class="mo-muted">Return money from a currency wallet to your main USDC wallet.</p>
+        </div>
+        <v-icon icon="mdi-chevron-right" />
+      </NuxtLink>
+
+      <NuxtLink :to="moveLink('usdc')" class="mo-card mo-top-item">
+        <v-icon icon="mdi-wallet-outline" size="28" />
+        <div>
+          <strong>1. USDC wallet</strong>
+          <p class="mo-muted">Move USDC from your Mondo wallet into a currency wallet.</p>
+        </div>
+        <v-icon icon="mdi-chevron-right" />
+      </NuxtLink>
+
+      <NuxtLink :to="moveLink('bank')" class="mo-card mo-top-item">
+        <v-icon icon="mdi-bank-outline" size="28" />
+        <div>
+          <strong>2. Mondo bank accounts</strong>
+          <p class="mo-muted">Move money received in your USD, EUR or GBP bank accounts into a currency wallet.</p>
+        </div>
+        <v-icon icon="mdi-chevron-right" />
+      </NuxtLink>
+
+      <NuxtLink v-if="euroOpen" to="/topup/euro" class="mo-card mo-top-item">
+        <v-icon icon="mdi-bank-transfer" size="28" />
+        <div>
+          <strong>3. Open banking (EUR)</strong>
+          <p class="mo-muted">Pay in euros straight from your bank app. No card needed.</p>
+        </div>
+        <v-icon icon="mdi-chevron-right" />
+      </NuxtLink>
+      <div v-else class="mo-card mo-top-item mo-top-off" aria-disabled="true">
+        <v-icon icon="mdi-bank-transfer" size="28" />
+        <div>
+          <strong>3. Open banking (EUR)</strong>
+          <p class="mo-muted">Coming soon.</p>
+        </div>
+      </div>
+
+      <NuxtLink to="/topup/buy" class="mo-card mo-top-item">
+        <v-icon icon="mdi-cash-fast" size="28" />
+        <div>
+          <strong>5. Buy USDC</strong>
+          <p class="mo-muted">Pay with a card or local payment method. The USDC arrives in your Mondo wallet.</p>
+        </div>
+        <v-icon icon="mdi-chevron-right" />
+      </NuxtLink>
+
+      <NuxtLink to="/topup/card" class="mo-card mo-top-item">
+        <v-icon icon="mdi-credit-card-outline" size="28" />
+        <div>
+          <strong>4. Card (EUR)</strong>
+          <p class="mo-muted">Pay in euros with a Visa or Mastercard.</p>
+        </div>
+        <v-icon icon="mdi-chevron-right" />
+      </NuxtLink>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+definePageMeta({ layout: 'dash', middleware: 'auth' })
+useHead({ title: 'Top up' })
+
+const route = useRoute()
+// Keeps the chosen currency when coming from a currency card.
+const moveLink = (source: string) => ({
+  path: '/topup/move',
+  query: { source, ...(route.query.currency ? { currency: String(route.query.currency) } : {}) },
+})
+
+const backLink = {
+  path: '/topup/move',
+  query: { direction: 'out', ...(route.query.currency ? { currency: String(route.query.currency) } : {}) },
+}
+
+// Open banking (EUR) is connected.
+const euroOpen = true
+</script>
+
+<style scoped>
+.mo-top-list { display: grid; gap: 12px; max-width: 640px; }
+.mo-top-item { display: flex; align-items: center; gap: 16px; padding: 18px; color: inherit; text-decoration: none; }
+.mo-top-item > div { flex: 1; min-width: 0; }
+.mo-top-item p { margin: 4px 0 0; }
+.mo-top-off { opacity: 0.55; }
+</style>

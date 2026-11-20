@@ -77,7 +77,7 @@ const loading = ref(true)
 const busy = ref(false)
 const error = ref('')
 const done = ref('')
-const direction = ref<'in' | 'out'>('in')
+const direction = ref<'in' | 'out'>(route.query.direction === 'out' ? 'out' : 'in')
 const source = ref<'usdc' | 'bank'>(route.query.source === 'bank' ? 'bank' : 'usdc')
 const currency = ref(
   CURRENCIES.some((c) => c.code === String(route.query.currency)) ? String(route.query.currency) : 'EUR',
