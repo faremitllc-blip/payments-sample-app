@@ -675,3 +675,19 @@ export async function claimTopup(
   )
   return Array.isArray(rows) && rows.length > 0
 }
+
+/** The OwlPay Harbor customer made for this user (US bank (ACH) top-ups). */
+export async function getAchCustomer(userId: string): Promise<string> {
+  const rows = await dbRequest<{ customer_uuid: string }[]>(
+    `ach_customers?user_id=eq.${encodeURIComponent(userId)}&select=customer_uuid&limit=1`,
+  )
+  return rows.length > 0 ? String(rows[0].customer_uuid) : ''
+}
+
+export async function saveAchCustomer(userId: string, customerUuid: string): Promise<void> {
+  await dbRequest<unknown>('ach_customers?on_conflict=user_id', {
+    method: 'POST',
+    body: { user_id: userId, customer_uuid: customerUuid },
+    prefer: 'resolution=merge-duplicates,return=minimal',
+  })
+}

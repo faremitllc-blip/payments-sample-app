@@ -4,6 +4,15 @@
     <p class="fm-lede">Choose where the money comes from to fill your currency wallets.</p>
 
     <div class="mo-top-list">
+      <NuxtLink :to="backLink" class="mo-card mo-top-item mo-top-back">
+        <v-icon icon="mdi-arrow-u-left-top" size="28" />
+        <div>
+          <strong>Move back to USDC wallet</strong>
+          <p class="mo-muted">Return money from a currency wallet to your main USDC wallet.</p>
+        </div>
+        <v-icon icon="mdi-chevron-right" />
+      </NuxtLink>
+
       <NuxtLink :to="moveLink('usdc')" class="mo-card mo-top-item">
         <v-icon icon="mdi-wallet-outline" size="28" />
         <div>
@@ -38,6 +47,15 @@
         </div>
       </div>
 
+      <NuxtLink to="/topup/ach" class="mo-card mo-top-item">
+        <v-icon icon="mdi-bank-plus" size="28" />
+        <div>
+          <strong>US bank (ACH)</strong>
+          <p class="mo-muted">Pay in US dollars from your US checking or savings account.</p>
+        </div>
+        <v-icon icon="mdi-chevron-right" />
+      </NuxtLink>
+
       <NuxtLink to="/topup/buy" class="mo-card mo-top-item">
         <v-icon icon="mdi-cash-fast" size="28" />
         <div>
@@ -69,6 +87,11 @@ const moveLink = (source: string) => ({
   path: '/topup/move',
   query: { source, ...(route.query.currency ? { currency: String(route.query.currency) } : {}) },
 })
+
+const backLink = {
+  path: '/topup/move',
+  query: { direction: 'out', ...(route.query.currency ? { currency: String(route.query.currency) } : {}) },
+}
 
 // Open banking (EUR) is connected.
 const euroOpen = true

@@ -120,6 +120,7 @@ const titles: Record<string, string> = {
   '/topup/return': 'Top up',
   '/topup/card': 'Pay by card',
   '/topup/buy': 'Buy USDC',
+  '/topup/ach': 'US bank (ACH)',
   '/topup/meld-return': 'Purchase result',
   '/pay': 'Pay with Mondo',
   '/bank': 'Bank accounts',

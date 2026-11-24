@@ -127,6 +127,9 @@ export default defineNuxtConfig({
     getmondoSandboxForce: process.env.GETMONDO_SANDBOX_FORCE || '',
     cardFeePercent: process.env.CARD_FEE_PERCENT || '',
     // Buy USDC with a card or bank through Meld (server only).
+    owlpayApiKey: process.env.OWLPAY_API_KEY || '',
+    owlpayBaseUrl: process.env.OWLPAY_BASE_URL || '',
+    allowLiveAch: process.env.ALLOW_LIVE_ACH || '',
     meldApiKey: process.env.MELD_API_KEY || '',
     meldMode: process.env.MELD_MODE || '',
     allowLiveOnramp: process.env.ALLOW_LIVE_ONRAMP || '',
