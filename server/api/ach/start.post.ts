@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { rateLimit, requireUser } from '../../utils/auth'
 import { createTopupRow, getAchCustomer, getProfileRow, getWalletRow, updateTopupRow } from '../../utils/db'
-import { achQuote, createTransfer, listLinkedBanks, pickPurpose, quoteRequirements } from '../../utils/owlpay'
+import { achQuote, createTransfer, customerAddress, extraDestination, listLinkedBanks, pickPurpose, quoteRequirements } from '../../utils/owlpay'
 
 // Starts a top-up from the customer's linked US bank account. Harbor pulls the dollars by ACH
 // and sends USDC straight to the customer's own Mondo wallet.
@@ -35,6 +35,8 @@ export default defineEventHandler(async (event) => {
   const profile = await getProfileRow(user.id)
   const name = String(profile?.display_name || user.email.split('@')[0] || 'Mondo customer').slice(0, 80)
 
+  const extra = extraDestination(schema, await customerAddress(customerUuid).catch(() => null))
+
   const id = randomUUID()
   await createTopupRow({
     id,
@@ -54,10 +56,11 @@ export default defineEventHandler(async (event) => {
       application_transfer_uuid: id,
       source: { payment_instrument: { linked_bank_account_id: bank.id } },
       destination: {
-        beneficiary_info: { beneficiary_name: name },
+        beneficiary_info: { beneficiary_name: name, ...extra.info },
         payout_instrument: { address: wallet.address },
         transfer_purpose: pickPurpose(schema),
         is_self_transfer: true,
+        ...extra.top,
       },
     })
     await updateTopupRow(id, { webform_id: `ow:${transfer.uuid}`, usdc_amount: quote.usdc })

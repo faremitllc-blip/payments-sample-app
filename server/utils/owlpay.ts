@@ -42,7 +42,14 @@ function refusal(err: any): string {
     for (const k of ['message', 'error', 'code', 'error_code']) {
       if (d[k] !== undefined && typeof d[k] !== 'object' && String(d[k])) parts.push(String(d[k]))
     }
-    if (d.errors && typeof d.errors === 'object') parts.push(JSON.stringify(d.errors).slice(0, 220))
+    // Validation answers repeat themselves; show the missing field names once, up front.
+    const raw = JSON.stringify(d)
+    const missing = new Set<string>()
+    for (const m of raw.matchAll(/required properties \(([^)]*)\) (?:are|is) missing/g)) {
+      m[1].split(',').forEach((n) => n.trim() && missing.add(n.trim()))
+    }
+    if (missing.size) parts.push(`Missing fields: ${[...missing].join(', ')}`)
+    else if (d.errors && typeof d.errors === 'object') parts.push(JSON.stringify(d.errors).slice(0, 220))
   }
   if (parts.length <= 1 && err?.message) parts.push(String(err.message))
   return parts.join(': ').replace(/\s+/g, ' ').slice(0, 320) || 'The bank service did not accept the request'
@@ -64,7 +71,7 @@ async function call<T>(path: string, method: 'GET' | 'POST', body?: unknown): Pr
     })
   } catch (err: any) {
     const status = Number(err?.statusCode) || 0
-    console.error('OwlPay request failed', method, path, status, JSON.stringify(err?.data || String(err?.message || '')).slice(0, 600))
+    console.error('OwlPay request failed', method, path, status, JSON.stringify(err?.data || String(err?.message || '')).slice(0, 1500))
     throw createError({ statusCode: status && status < 500 ? 400 : 502, statusMessage: refusal(err) })
   }
 }
@@ -222,6 +229,72 @@ export function mapStatus(t: AchTransfer): 'waiting' | 'credited' | 'failed' | '
   if (['reject', 'rejected', 'expired', 'refunded', 'failed'].includes(s)) return 'failed'
   // pending_customer_transfer_start, pending_harbor, pending_external, on_hold
   return 'waiting'
+}
+
+/** Every field name the transfer rules mark as required, wherever it sits in the schema. */
+function requiredNames(schema: any): Set<string> {
+  const out = new Set<string>()
+  const walk = (node: any, depth: number) => {
+    if (!node || typeof node !== 'object' || depth > 10) return
+    if (Array.isArray(node.required)) node.required.forEach((n: unknown) => typeof n === 'string' && out.add(n))
+    for (const v of Object.values(node)) walk(v, depth + 1)
+  }
+  walk(schema, 0)
+  return out
+}
+
+/** The allowed values the rules list for one field, if any. */
+function allowedValues(schema: any, field: string): string[] {
+  const found: string[] = []
+  const walk = (node: any, depth: number) => {
+    if (!node || typeof node !== 'object' || depth > 10) return
+    const p = node.properties?.[field]
+    if (p) {
+      if (Array.isArray(p.enum)) found.push(...p.enum.map(String))
+      if (Array.isArray(p.oneOf)) found.push(...p.oneOf.map((o: any) => String(o?.const ?? '')).filter(Boolean))
+    }
+    for (const v of Object.values(node)) walk(v, depth + 1)
+  }
+  walk(schema, 0)
+  return found
+}
+
+/**
+ * The extra destination fields this route asks for. Mondo wallets are held for the customer by
+ * Circle, so the wallet counts as custodial. The sandbox falls back to a test US address.
+ */
+export function extraDestination(schema: any, address: Record<string, string> | null): { top: Record<string, unknown>; info: Record<string, unknown> } {
+  const need = requiredNames(schema)
+  const top: Record<string, unknown> = {}
+  const info: Record<string, unknown> = {}
+  if (need.has('beneficiary_receiving_wallet_type')) {
+    const opts = allowedValues(schema, 'beneficiary_receiving_wallet_type')
+    top.beneficiary_receiving_wallet_type =
+      opts.find((o) => /custodial/i.test(o) && !/non/i.test(o)) || (opts.length ? opts[0] : 'custodial')
+  }
+  if (need.has('beneficiary_institution_name')) top.beneficiary_institution_name = 'Mondo'
+  if (need.has('beneficiary_address')) {
+    if (address) info.beneficiary_address = address
+    else if (settings().sandbox) {
+      info.beneficiary_address = { street: '123 Main St', city: 'Austin', state_province: 'TX', postal_code: '78701', country: 'US' }
+    } else {
+      throw createError({ statusCode: 400, statusMessage: 'The bank service needs your home address, which is not on file yet' })
+    }
+  }
+  return { top, info }
+}
+
+/** The home address on the customer's record, when the bank service returns one. */
+export async function customerAddress(uuid: string): Promise<Record<string, string> | null> {
+  const res = await call<{ data?: any }>(`/api/v1/customers/${encodeURIComponent(uuid)}`, 'GET')
+  const d = res?.data ?? res
+  const a = d?.address || d?.residential_address || d?.beneficiary_address
+  if (!a || typeof a !== 'object') return null
+  const street = String(a.street || a.line1 || a.address_line_1 || '')
+  const city = String(a.city || '')
+  const postal = String(a.postal_code || a.zip || '')
+  if (!street || !city || !postal) return null
+  return { street, city, state_province: String(a.state_province || a.state || ''), postal_code: postal, country: String(a.country || 'US') }
 }
 
 /** Picks a transfer purpose the quote accepts, preferring a savings-like one. */
