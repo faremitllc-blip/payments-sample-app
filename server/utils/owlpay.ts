@@ -231,15 +231,15 @@ export function mapStatus(t: AchTransfer): 'waiting' | 'credited' | 'failed' | '
   return 'waiting'
 }
 
-/** Every field name the transfer rules mark as required, wherever it sits in the schema. */
-function requiredNames(schema: any): Set<string> {
-  const out = new Set<string>()
-  const walk = (node: any, depth: number) => {
-    if (!node || typeof node !== 'object' || depth > 10) return
-    if (Array.isArray(node.required)) node.required.forEach((n: unknown) => typeof n === 'string' && out.add(n))
-    for (const v of Object.values(node)) walk(v, depth + 1)
+/** Every field name the transfer rules mark as required, and whether it sits inside beneficiary_info. */
+function requiredNames(schema: any): Map<string, boolean> {
+  const out = new Map<string, boolean>()
+  const walk = (node: any, inInfo: boolean, depth: number) => {
+    if (!node || typeof node !== 'object' || depth > 12) return
+    if (Array.isArray(node.required)) node.required.forEach((n: unknown) => typeof n === 'string' && !out.has(n) && out.set(n, inInfo))
+    for (const [k, v] of Object.entries(node)) walk(v, inInfo || k === 'beneficiary_info', depth + 1)
   }
-  walk(schema, 0)
+  walk(schema, false, 0)
   return out
 }
 
@@ -259,42 +259,68 @@ function allowedValues(schema: any, field: string): string[] {
   return found
 }
 
-/**
- * The extra destination fields this route asks for. Mondo wallets are held for the customer by
- * Circle, so the wallet counts as custodial. The sandbox falls back to a test US address.
- */
-export function extraDestination(schema: any, address: Record<string, string> | null): { top: Record<string, unknown>; info: Record<string, unknown> } {
-  const need = requiredNames(schema)
-  const top: Record<string, unknown> = {}
-  const info: Record<string, unknown> = {}
-  if (need.has('beneficiary_receiving_wallet_type')) {
-    const opts = allowedValues(schema, 'beneficiary_receiving_wallet_type')
-    top.beneficiary_receiving_wallet_type =
-      opts.find((o) => /custodial/i.test(o) && !/non/i.test(o)) || (opts.length ? opts[0] : 'custodial')
-  }
-  if (need.has('beneficiary_institution_name')) top.beneficiary_institution_name = 'Mondo'
-  if (need.has('beneficiary_address')) {
-    if (address) info.beneficiary_address = address
-    else if (settings().sandbox) {
-      info.beneficiary_address = { street: '123 Main St', city: 'Austin', state_province: 'TX', postal_code: '78701', country: 'US' }
-    } else {
-      throw createError({ statusCode: 400, statusMessage: 'The bank service needs your home address, which is not on file yet' })
-    }
-  }
-  return { top, info }
+export interface CustomerRecord {
+  address: Record<string, string> | null
+  birthDate: string
+  idNumber: string
 }
 
-/** The home address on the customer's record, when the bank service returns one. */
-export async function customerAddress(uuid: string): Promise<Record<string, string> | null> {
+/** What the bank service already holds about the customer (address, date of birth, ID number). */
+export async function customerRecord(uuid: string): Promise<CustomerRecord> {
   const res = await call<{ data?: any }>(`/api/v1/customers/${encodeURIComponent(uuid)}`, 'GET')
   const d = res?.data ?? res
   const a = d?.address || d?.residential_address || d?.beneficiary_address
-  if (!a || typeof a !== 'object') return null
-  const street = String(a.street || a.line1 || a.address_line_1 || '')
-  const city = String(a.city || '')
-  const postal = String(a.postal_code || a.zip || '')
-  if (!street || !city || !postal) return null
-  return { street, city, state_province: String(a.state_province || a.state || ''), postal_code: postal, country: String(a.country || 'US') }
+  let address: Record<string, string> | null = null
+  if (a && typeof a === 'object') {
+    const street = String(a.street || a.line1 || a.address_line_1 || '')
+    const city = String(a.city || '')
+    const postal = String(a.postal_code || a.zip || '')
+    if (street && city && postal) {
+      address = { street, city, state_province: String(a.state_province || a.state || ''), postal_code: postal, country: String(a.country || 'US') }
+    }
+  }
+  const dob = String(d?.birth_date || d?.date_of_birth || d?.dob || '').slice(0, 10)
+  const idNumber = String(d?.id_number || d?.id_doc_number || d?.identity_number || d?.tax_id || '')
+  return { address, birthDate: /^\d{4}-\d{2}-\d{2}$/.test(dob) ? dob : '', idNumber }
+}
+
+/**
+ * The extra destination fields this route asks for. Mondo wallets are held for the customer by
+ * Circle, so the wallet counts as custodial. The sandbox falls back to test values for details
+ * Mondo does not collect yet; live mode stops instead of inventing identity data.
+ */
+export function extraDestination(schema: any, rec: CustomerRecord): { top: Record<string, unknown>; info: Record<string, unknown> } {
+  const need = requiredNames(schema)
+  const top: Record<string, unknown> = {}
+  const info: Record<string, unknown> = {}
+  const put = (name: string, value: unknown, defaultInfo: boolean) => {
+    ;(need.get(name) ?? defaultInfo ? info : top)[name] = value
+  }
+  const sandbox = settings().sandbox
+  const missing = (what: string) =>
+    createError({ statusCode: 400, statusMessage: `The bank service needs your ${what}, which is not on file yet` })
+
+  if (need.has('beneficiary_receiving_wallet_type')) {
+    const opts = allowedValues(schema, 'beneficiary_receiving_wallet_type')
+    put('beneficiary_receiving_wallet_type', opts.find((o) => /custodial/i.test(o) && !/non/i.test(o)) || (opts.length ? opts[0] : 'custodial'), false)
+  }
+  if (need.has('beneficiary_institution_name')) put('beneficiary_institution_name', 'Mondo', false)
+  if (need.has('beneficiary_address')) {
+    if (rec.address) put('beneficiary_address', rec.address, true)
+    else if (sandbox) put('beneficiary_address', { street: '123 Main St', city: 'Austin', state_province: 'TX', postal_code: '78701', country: 'US' }, true)
+    else throw missing('home address')
+  }
+  if (need.has('beneficiary_dob')) {
+    if (rec.birthDate) put('beneficiary_dob', rec.birthDate, true)
+    else if (sandbox) put('beneficiary_dob', '1990-01-01', true)
+    else throw missing('date of birth')
+  }
+  if (need.has('beneficiary_id_doc_number')) {
+    if (rec.idNumber) put('beneficiary_id_doc_number', rec.idNumber, true)
+    else if (sandbox) put('beneficiary_id_doc_number', '123456789', true)
+    else throw missing('ID document number')
+  }
+  return { top, info }
 }
 
 /** Picks a transfer purpose the quote accepts, preferring a savings-like one. */

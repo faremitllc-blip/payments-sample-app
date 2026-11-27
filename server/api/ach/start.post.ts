@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { rateLimit, requireUser } from '../../utils/auth'
 import { createTopupRow, getAchCustomer, getProfileRow, getWalletRow, updateTopupRow } from '../../utils/db'
-import { achQuote, createTransfer, customerAddress, extraDestination, listLinkedBanks, pickPurpose, quoteRequirements } from '../../utils/owlpay'
+import { achQuote, createTransfer, customerRecord, extraDestination, listLinkedBanks, pickPurpose, quoteRequirements } from '../../utils/owlpay'
 
 // Starts a top-up from the customer's linked US bank account. Harbor pulls the dollars by ACH
 // and sends USDC straight to the customer's own Mondo wallet.
@@ -35,7 +35,7 @@ export default defineEventHandler(async (event) => {
   const profile = await getProfileRow(user.id)
   const name = String(profile?.display_name || user.email.split('@')[0] || 'Mondo customer').slice(0, 80)
 
-  const extra = extraDestination(schema, await customerAddress(customerUuid).catch(() => null))
+  const extra = extraDestination(schema, await customerRecord(customerUuid).catch(() => ({ address: null, birthDate: '', idNumber: '' })))
 
   const id = randomUUID()
   await createTopupRow({
